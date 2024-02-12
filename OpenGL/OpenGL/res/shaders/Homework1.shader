@@ -10,8 +10,8 @@ uniform  mat4 u_MVP;
 
 void main()
 {
+    v_color = color;
     gl_Position = u_MVP * position;
-    gl_PointSize = 30.0;
 };
 
 
@@ -24,5 +24,5 @@ in vec3 v_color;
 
 void main()
 {
-    f_color = vec4(1.0, 0.0, 0.0, 1.0);
+    f_color = vec4(v_color, 1.0);
 };
