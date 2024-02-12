@@ -1,0 +1,12 @@
+OpenGL/.vs/
+OpenGL/Debug/
+OpenGL/Release/
+OpenGL/x64/
+
+OpenGL/OpenGL/Debug/
+OpenGL/OpenGL/Release/
+OpenGL/OpenGL/x64/
+OpenGL/OpenGL/OpenGL/imgui.ini
+*.user
+
+OpenGL/OpenGL/src/tests/
