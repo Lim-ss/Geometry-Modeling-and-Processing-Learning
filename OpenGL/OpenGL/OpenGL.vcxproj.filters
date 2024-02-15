@@ -72,6 +72,9 @@
     <ClCompile Include="src\homeworks\Homework1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\Homework3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -2363,6 +2366,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\vendor\Eigen\src\UmfPackSupport\UmfPackSupport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\Homework3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

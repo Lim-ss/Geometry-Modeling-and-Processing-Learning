@@ -9,6 +9,7 @@
 
 #include "Module.h"
 #include "Homework1.h"
+#include "Homework3.h"
 
 
 module::Module* currentModule = nullptr;
@@ -104,6 +105,7 @@ int main(void)
         double lastFrame = 0.0f;
 
         moduleMenu->RegisterModule<module::Homework1>("Homework1");
+        moduleMenu->RegisterModule<module::Homework3>("Homework3");
 
         /* Loop until the user closes the window */
         while (!glfwWindowShouldClose(window))
