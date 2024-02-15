@@ -10,3 +10,4 @@ OpenGL/OpenGL/OpenGL/imgui.ini
 *.user
 
 OpenGL/OpenGL/src/tests/
+Python/__pycache__/
