@@ -60,7 +60,7 @@ namespace module {
 		std::vector<float> m_parameter;
 
 		bool m_functionShouldUpdate;
-		bool m_showfunction[4];
+		int m_parameterMethod;
 
 		int m_highestPower;
 		float m_lambda;//岭回归正则项系数

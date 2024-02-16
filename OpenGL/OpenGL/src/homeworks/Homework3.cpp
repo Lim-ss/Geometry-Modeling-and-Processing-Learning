@@ -22,7 +22,7 @@ namespace module {
         m_FunctionPoints(),
         m_parameter(),
         m_functionShouldUpdate(false),
-        m_showfunction(),
+        m_parameterMethod(),
         m_highestPower(3),
         m_lambda(0.0f),
         m_Proj(glm::mat4(1.0f)),
@@ -80,12 +80,24 @@ namespace module {
 
         if (m_points.size() > 1)
         {
-            GenerateParameter(Homework3::uniform);
+            switch (m_parameterMethod)
+            {
+            case 0:
+                GenerateParameter(Homework3::uniform);
+                break;
+            case 1:
+                GenerateParameter(Homework3::chord_length);
+                break;
+            case 2:
+                GenerateParameter(Homework3::centripetal);
+                break;
+            default:
+                break;
+            }
             GetFittingFunction();
             PreDrawFunction({ 0.0f, 1.0f, 1.0f });
             m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
             glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
-            
         }
     }
 
@@ -98,14 +110,13 @@ namespace module {
 
         ImGui::SliderFloat("Line Width", &m_lineWidth, 2.0f, 30.0f);
 
-        ImGui::SliderFloat("lambda of ridge regression", &m_lambda, 0.0f, 1.0f);
+        ImGui::SliderFloat("lambda of ridge regression", &m_lambda, 0.0f, 0.1f);
 
-        ImGui::SliderInt("highest power", &m_highestPower, 1, 10);
+        ImGui::SliderInt("highest power", &m_highestPower, 1, 30);
 
-        /*ImGui::Checkbox("Polynomial Interpolation", &m_showfunction[0]);
-        ImGui::Checkbox("Gauss Interpolation", &m_showfunction[1]);
-        ImGui::Checkbox("Linear Regression", &m_showfunction[2]);
-        ImGui::Checkbox("Ridge Regression", &m_showfunction[3]);*/
+        ImGui::RadioButton("uniform", &m_parameterMethod, 0);
+        ImGui::RadioButton("chord_length", &m_parameterMethod, 1);
+        ImGui::RadioButton("centripetal", &m_parameterMethod, 2);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
 
@@ -162,7 +173,7 @@ namespace module {
         if (m_functionShouldUpdate == false)
             return;
         m_FunctionPoints.clear();
-        float t = -0.0f;
+        float t = 0.0f;
         while (t <= 1.0f)
         {
             m_FunctionPoints.push_back({ {fittingFunctionX(t), fittingFunctionY(t), 0}, color});
@@ -176,15 +187,15 @@ namespace module {
         if (m_functionShouldUpdate == false)
             return;
         int size = m_points.size();
-        if (size == 1)
+        if (size < 2)
             return;
+        m_parameter.clear();
         switch (method)
         {
         case Homework3::uniform:
         {
             float step = 1.0f / (size - 1);
             float t = 0.0f;
-            m_parameter.clear();
             for (int i = 0; i < size; i++)
             {
                 m_parameter.push_back(t);
@@ -194,9 +205,38 @@ namespace module {
         }
 
         case Homework3::chord_length:
+        {
+            float total_length = 0.0f;
+            for (int i = 0; i < size - 1; i++)
+            {
+                m_parameter.push_back(total_length);
+                total_length += pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2);
+
+            }
+            for (int i = 0; i < size - 1; i++)
+            {
+                m_parameter[i] /= total_length;
+            }
+            m_parameter.push_back(1.0f);
             break;
+        }
+            
         case Homework3::centripetal:
+        {
+            float total_length = 0.0f;
+            for (int i = 0; i < size - 1; i++)
+            {
+                m_parameter.push_back(total_length);
+                total_length += sqrtf(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2));
+
+            }
+            for (int i = 0; i < size - 1; i++)
+            {
+                m_parameter[i] /= total_length;
+            }
+            m_parameter.push_back(1.0f);
             break;
+        }
         default:
             break;
         }
@@ -207,7 +247,7 @@ namespace module {
         if (m_functionShouldUpdate == false)
             return;
         int size = m_points.size();
-        if (size == 1)
+        if (size < 2)
             return;
         Eigen::MatrixXd matrix_A(size, m_highestPower + 1);
         Eigen::MatrixXd matrix_b1(size, 1);
