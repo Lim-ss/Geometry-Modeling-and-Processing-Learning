@@ -65,7 +65,9 @@ namespace module {
 		std::vector<float> m_parameter;
 
 		bool m_functionShouldUpdate;
-		
+		bool m_draggingPoint;
+
+		int m_pointOnCursor;
 		int m_parameterMethod;
 		int m_mode;
 		char m_inputX[32] = "";

@@ -20,6 +20,7 @@ namespace module {
         m_points(),
         m_indices(),
         m_FunctionPoints(),
+        m_pointOnCursor(-1),
         m_parameter(),
         m_functionShouldUpdate(false),
         m_Proj(glm::mat4(1.0f)),
@@ -99,7 +100,7 @@ namespace module {
     void Homework4::OnImguiRender()
     {
 
-        ImGui::Text("Press SPACE to clear points");
+        ImGui::Text("Press DELETE to delete one point and SPACE to clear all points");
         //ImGui::SliderFloat("Point Size", &m_pointSize, 2.0f, 30.0f);
         //ImGui::SliderFloat("Line Width", &m_lineWidth, 2.0f, 30.0f);
 
@@ -133,7 +134,34 @@ namespace module {
 
     void Homework4::CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     {
+        int size = m_points.size();
 
+        if (m_pointOnCursor >= size)
+            m_pointOnCursor = -1;
+
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        float x = (xpos - ((float)width / 2.0f)) * 20.0f / float(width);
+        float y = -(ypos - ((float)height / 2.0f)) * 20.0f / float(height);
+
+        if (m_draggingPoint == true)
+        {
+            m_points[m_pointOnCursor].position = { x, y, 0.0f };
+            return;
+        }
+
+        if (m_pointOnCursor != -1)
+            m_points[m_pointOnCursor].color = { 1.0f, 0.0f, 0.0f };
+        for (int i = 0;i < size;i++)
+        {
+            if (abs(m_points[i].position.x - x) < 0.1f && abs(m_points[i].position.y - y) < 0.1f)
+            {
+                m_points[i].color = { 1.0f, 1.0f, 0.0f };
+                m_pointOnCursor = i;
+                return;
+            }
+        }
+        m_pointOnCursor = -1;
     }
 
     void Homework4::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -142,13 +170,13 @@ namespace module {
         {
             ClearPoint();
         }
-        if (key == GLFW_KEY_A && action == GLFW_PRESS)
+        if (key == GLFW_KEY_DELETE && action == GLFW_PRESS)
         {
-            for (int i = 0;i < m_FunctionPoints.size();i++)
+            if (m_points.size() != 0)
             {
-                printf("%f,%f\n", m_FunctionPoints[i].position.x, m_FunctionPoints[i].position.y);
+                m_points.pop_back();
+                m_indices.pop_back();
             }
-            printf("-------------------------------------------------------");
         }
     }
 
@@ -162,7 +190,18 @@ namespace module {
             glfwGetWindowSize(window, &width, &height);
             float x = (xpos - ((float)width / 2.0f)) * 20.0f / float(width);
             float y = -(ypos - ((float)height / 2.0f)) * 20.0f / float(height);
-            AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
+
+            if(m_pointOnCursor == -1)
+                AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
+            else
+            {
+                //进入拖动点的状态
+                m_draggingPoint = true;
+            }
+        }
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+        {
+            m_draggingPoint = false;
         }
     }
 
