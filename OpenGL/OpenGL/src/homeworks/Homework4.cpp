@@ -74,36 +74,48 @@ namespace module {
 
         glDrawElements(GL_POINTS, m_indices.size(), GL_UNSIGNED_INT, nullptr);
 
-        //std::cout << m_FunctionPoints.size() << std::endl;
-
         if (m_points.size() > 1)
         {
-            GetFittingFunction();
-            PreDrawFunction({ 0.0f, 1.0f, 1.0f });
-            m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
-            //glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
-            glDrawArrays(GL_POINTS, 0, m_FunctionPoints.size());
+            if (m_mode == 0)
+            {
+                GetFittingFunction();
+                PreDrawFunction({ 0.0f, 1.0f, 1.0f });
+                m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
+                glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
+                //glDrawArrays(GL_POINTS, 0, m_FunctionPoints.size());
+            }
+            else if (m_mode == 1)
+            {
+                GenerateParameter();
+                GetFittingCurve();
+                PreDrawCurve({ 0.0f, 1.0f, 1.0f });
+                m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
+                glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
+                //glDrawArrays(GL_POINTS, 0, m_FunctionPoints.size());
+            }
         }
-        /*if (m_points.size() > 1)
-        {
-            GenerateParameter();
-            GetFittingCurve();
-            PreDrawCurve({ 0.0f, 1.0f, 1.0f });
-            m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
-            glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
-        }*/
     }
 
     void Homework4::OnImguiRender()
     {
 
         ImGui::Text("Press SPACE to clear points");
+        //ImGui::SliderFloat("Point Size", &m_pointSize, 2.0f, 30.0f);
+        //ImGui::SliderFloat("Line Width", &m_lineWidth, 2.0f, 30.0f);
 
-        ImGui::SliderFloat("Point Size", &m_pointSize, 2.0f, 30.0f);
+        ImGui::Text("mode:");
+        ImGui::RadioButton("function", &m_mode, 0);
+        ImGui::RadioButton("curve", &m_mode, 1);
 
-        ImGui::SliderFloat("Line Width", &m_lineWidth, 2.0f, 30.0f);
-
+        if (m_mode == 1)
+        {
+            ImGui::Text("parameter method:");
+            ImGui::RadioButton("uniform", &m_parameterMethod, 0);
+            ImGui::RadioButton("chord_length", &m_parameterMethod, 1);
+        }
+        
         // 在ImGui中创建输入框，用于手动输入坐标
+
         ImGui::InputText("X", m_inputX, IM_ARRAYSIZE(m_inputX));
         ImGui::InputText("Y", m_inputY, IM_ARRAYSIZE(m_inputY));
         // 在ImGui中创建按钮，用于确定坐标
@@ -217,17 +229,18 @@ namespace module {
             return;
         m_FunctionPoints.clear();
 
-        float step = 0.1f;
         int size = m_points.size();
+        float step = 0.1f;
+        
         for (int i = 0;i < size - 1;i++)//分别绘制size-1段函数
         {
             float t1 = m_parameter[i];
             float t2 = m_parameter[i + 1];
             float t = t1;
-            m_FunctionPoints.push_back({ fittingCurve(i, t1), color});
-            while ((t = t + step) < t2)
+            while (t < t2)
             {
                 m_FunctionPoints.push_back({ fittingCurve(i, t), color });
+                t = t + step;
             }
             //终点不用画，避免与下一条方程的第一个点重合
         }
@@ -244,24 +257,26 @@ namespace module {
         if (size < 2)
             return;
 
-        ////中心参数化
-        //m_parameter.clear();
-        //float total_length = 0.0f;
-        //for (int i = 0; i < size - 1; i++)
-        //{
-        //    m_parameter.push_back(total_length);
-        //    total_length += sqrtf(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2));
-        //}
-        //for (int i = 0; i < size - 1; i++)
-        //{
-        //    m_parameter[i] /= total_length;
-        //}
-        //m_parameter.push_back(1.0f);
-
-        m_parameter.clear();
-        for (int i = 0;i < size;i++)
+        if (m_parameterMethod == 0)
         {
-            m_parameter.push_back((float)i);
+            //均匀参数化
+            m_parameter.clear();
+            for (int i = 0;i < size;i++)
+            {
+                m_parameter.push_back((float)i);
+            }
+        }
+        else if (m_parameterMethod == 1)
+        {
+            //弦长参数化
+            m_parameter.clear();
+            float total_length = 0.0f;
+            for (int i = 0; i < size - 1; i++)
+            {
+                m_parameter.push_back(total_length);
+                total_length += pow(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2), 0.5);
+            }
+            m_parameter.push_back(total_length);
         }
      }
 
@@ -396,6 +411,7 @@ namespace module {
             m_h3.push_back(pow(m_h[i], 3));
         }
 
+        /*
         Eigen::MatrixXd matrix_A(size, size);
         matrix_A = Eigen::MatrixXd::Zero(size, size);//eigen不会自动初始化元素为0
         Eigen::MatrixXd matrix_b(size, 2);
@@ -421,6 +437,74 @@ namespace module {
         //暂时用普通解法先测试，等会再改用追赶法
         matrix_x = matrix_A.colPivHouseholderQr().solve(matrix_b);
         m_m.insert(m_m.begin(), matrix_x.data(), matrix_x.data() + matrix_x.size());
+        */
+
+
+        //追赶法
+        double* a = new double[size];//注意a[0]不使用，其实只有size-1
+        double* b = new double[size];
+        double* c = new double[size - 1];
+        double* beta = new double[size];//注意beta[0]不使用，其实只有size - 1
+        double* gamma = new double[size];
+        double* delta = new double[size - 1];
+        double* f1 = new double[size];
+        double* f2 = new double[size];
+        double* y1 = new double[size];
+        double* y2 = new double[size];
+        b[0] = 2;
+        c[0] = 1;
+        f1[0] = 3 * (m_points[1].position.x - m_points[0].position.x) / m_h[0];
+        f2[0] = 3 * (m_points[1].position.y - m_points[0].position.y) / m_h[0];
+        for (int i = 1;i <= size - 2;i++)
+        {
+            a[i] = m_h[i] / (m_h[i - 1] + m_h[i]);
+            b[i] = 2;
+            c[i] = m_h[i - 1] / (m_h[i - 1] + m_h[i]);
+            f1[i] = 3 * ((m_h[i - 1] / (m_h[i - 1] + m_h[i])) * ((m_points[i + 1].position.x - m_points[i].position.x) / m_h[i]) + (m_h[i] / (m_h[i - 1] + m_h[i])) * ((m_points[i].position.x - m_points[i - 1].position.x) / m_h[i - 1]));
+            f2[i] = 3 * ((m_h[i - 1] / (m_h[i - 1] + m_h[i])) * ((m_points[i + 1].position.y - m_points[i].position.y) / m_h[i]) + (m_h[i] / (m_h[i - 1] + m_h[i])) * ((m_points[i].position.y - m_points[i - 1].position.y) / m_h[i - 1]));
+        }
+        a[size - 1] = 1;
+        b[size - 1] = 2;
+        f1[size - 1] = 3 * (m_points[size - 1].position.x - m_points[size - 2].position.x) / m_h[size - 2];
+        f2[size - 1] = 3 * (m_points[size - 1].position.y - m_points[size - 2].position.y) / m_h[size - 2];
+
+        //三角分解:Ax=f ---> (LU)x = f
+        gamma[0] = b[0];
+        delta[0] = c[0] / gamma[0];
+        for (int i = 1;i <= size - 1;i++)
+        {
+            beta[i] = a[i];
+            gamma[i] = b[i] - beta[i] * delta[i - 1];
+            if (i != size - 1)
+                delta[i] = c[i] / gamma[i];
+        }
+        //Ly = f
+        y1[0] = f1[0] / gamma[0];
+        y2[0] = f2[0] / gamma[0];
+        for (int i = 1;i <= size - 1; i++)
+        {
+            y1[i] = (f1[i] - beta[i] * y1[i - 1]) / gamma[i];
+            y2[i] = (f2[i] - beta[i] * y2[i - 1]) / gamma[i];
+        }
+        //Ux = y，这里m就是x
+        m_m.resize(2 * size);
+        m_m[2 * (size - 1)] = y1[size - 1];
+        m_m[2 * (size - 1) + 1] = y2[size - 1];
+        for (int i = size - 2;i >= 0; i--)
+        {
+            m_m[2 * i] = y1[i] - delta[i] * m_m[2 * (i + 1)];
+            m_m[2 * i + 1] = y2[i] - delta[i] * m_m[2 * (i + 1) + 1];
+        }
+
+        delete[] a;
+        delete[] b;
+        delete[] c;
+        delete[] beta;
+        delete[] gamma;
+        delete[] delta;
+        delete[] f1;
+        delete[] y1;
+        delete[] y2;
     }
 
     float Homework4::fittingFunction(int i, float x)
@@ -449,6 +533,8 @@ namespace module {
         float y3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_m[2 * i + 1];
         float y4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_m[2 * (i + 1) + 1];
 
+        if (std::isnan(x1) || std::isnan(x2) || std::isnan(x3) || std::isnan(x4) || std::isnan(y1) || std::isnan(y2) || std::isnan(y3) || std::isnan(y4))
+            std::cout << "error:两点过近,计算中出现了除0操作" << std::endl << "请按空格清除顶点" << std::endl;
         return { (x1 + x2 + x3 + x4), (y1 + y2 + y3 + y4), 0.0f };
     }
 

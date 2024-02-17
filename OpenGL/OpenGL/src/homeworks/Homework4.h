@@ -66,6 +66,8 @@ namespace module {
 
 		bool m_functionShouldUpdate;
 		
+		int m_parameterMethod;
+		int m_mode;
 		char m_inputX[32] = "";
 		char m_inputY[32] = "";
 

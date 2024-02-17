@@ -210,7 +210,7 @@ namespace module {
             for (int i = 0; i < size - 1; i++)
             {
                 m_parameter.push_back(total_length);
-                total_length += pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2);
+                total_length += pow(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2), 0.5);
 
             }
             for (int i = 0; i < size - 1; i++)
@@ -227,7 +227,7 @@ namespace module {
             for (int i = 0; i < size - 1; i++)
             {
                 m_parameter.push_back(total_length);
-                total_length += sqrtf(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2));
+                total_length += pow(pow(m_points[i].position.x - m_points[i + 1].position.x, 2) + pow(m_points[i].position.y - m_points[i + 1].position.y, 2), 0.25);
 
             }
             for (int i = 0; i < size - 1; i++)
