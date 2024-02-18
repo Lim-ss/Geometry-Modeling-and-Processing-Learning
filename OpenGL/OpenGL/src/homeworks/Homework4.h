@@ -38,8 +38,25 @@ namespace module {
 			centripetal = 2
 		};
 
+		enum PointMode
+		{
+			c1 = 0,
+			g1 = 1,
+			g0 = 2
+		};
+
+		struct PointStatus
+		{
+			PointMode mode;
+			double leftDerivativeX;
+			double leftDerivativeY;
+			double rightDerivativeX;
+			double rightDerivativeY;
+		};
+
 		void AddPoint(glm::vec3 position, glm::vec3 color);
 		void ClearPoint();
+		void DeletePoint();
 		void SortPoint();
 
 		void PreDrawFunction(glm::vec3 color);
@@ -50,11 +67,13 @@ namespace module {
 		void GetFittingCurve();
 		float fittingFunction(int i, float x);
 		glm::vec3 fittingCurve(int i, float t);
-
-
+		void GenarateControlVertexs();
+		void CopyCurve();
+		void CalculateH();
 
 	private:
 		std::vector<double> m_m;//各点的一阶导
+		std::vector<PointStatus> m_pointsStatus;
 		std::vector<double> m_h;//h(i) = x(i + 1) - x(i)
 		std::vector<double> m_h2;//h(i)^2
 		std::vector<double> m_h3;//h(i)^3
@@ -63,11 +82,15 @@ namespace module {
 		std::vector<unsigned int> m_indices;
 		std::vector<VertexBuffer::point> m_FunctionPoints;
 		std::vector<float> m_parameter;
+		std::vector<VertexBuffer::point> m_ControlVertexs;
+		std::vector<VertexBuffer::point> m_ControlLines;
 
 		bool m_functionShouldUpdate;
 		bool m_draggingPoint;
+		bool m_draggingControlVertex;
 
 		int m_pointOnCursor;
+		int m_controlVertexOnCursor;
 		int m_parameterMethod;
 		int m_mode;
 		char m_inputX[32] = "";

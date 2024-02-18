@@ -21,7 +21,12 @@ namespace module {
         m_indices(),
         m_FunctionPoints(),
         m_pointOnCursor(-1),
+        m_controlVertexOnCursor(-1),
         m_parameter(),
+        m_ControlVertexs(),
+        m_ControlLines(),
+        m_parameterMethod(1),
+        m_mode(1),
         m_functionShouldUpdate(false),
         m_Proj(glm::mat4(1.0f)),
         m_View(glm::mat4(1.0f)),
@@ -40,7 +45,7 @@ namespace module {
         m_IBO = std::make_unique<IndexBuffer>(m_indices.data(), (unsigned int)m_indices.size());//ATTENTION! argument.2 is count,not size
         m_Shader = std::make_unique<Shader>("res/shaders/Homework1.shader");
 
-        glEnable(GL_DEPTH_TEST);
+        //glEnable(GL_DEPTH_TEST);
 
         m_Proj = glm::ortho<float>(-10.0f, 10.0f, -10.0f, 10.0f, -1.0f, 1.0f);
     }
@@ -92,43 +97,129 @@ namespace module {
                 PreDrawCurve({ 0.0f, 1.0f, 1.0f });
                 m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
                 glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
-                //glDrawArrays(GL_POINTS, 0, m_FunctionPoints.size());
+
+                GenarateControlVertexs();
+                m_VBO->ReData(m_ControlLines.data(), sizeof(VertexBuffer::point) * m_ControlLines.size());
+                glDrawArrays(GL_LINES, 0, m_ControlLines.size());
+                m_VBO->ReData(m_ControlVertexs.data(), sizeof(VertexBuffer::point) * m_ControlVertexs.size());
+                glDrawArrays(GL_POINTS, 0, m_ControlVertexs.size());
+            }
+            else if (m_mode == 2)//edit模式
+            {
+                GenerateParameter();
+                //这里不重新生成整条曲线，不调用GetFittingCurve();
+                CalculateH();
+                PreDrawCurve({ 0.0f, 1.0f, 1.0f });
+                m_VBO->ReData(m_FunctionPoints.data(), sizeof(VertexBuffer::point) * m_FunctionPoints.size());
+                glDrawArrays(GL_LINE_STRIP, 0, m_FunctionPoints.size());
+
+                GenarateControlVertexs();
+                m_VBO->ReData(m_ControlLines.data(), sizeof(VertexBuffer::point) * m_ControlLines.size());
+                glDrawArrays(GL_LINES, 0, m_ControlLines.size());
+                m_VBO->ReData(m_ControlVertexs.data(), sizeof(VertexBuffer::point) * m_ControlVertexs.size());
+                glDrawArrays(GL_POINTS, 0, m_ControlVertexs.size());
+
             }
         }
     }
 
     void Homework4::OnImguiRender()
     {
-
-        ImGui::Text("Press DELETE to delete one point and SPACE to clear all points");
-        //ImGui::SliderFloat("Point Size", &m_pointSize, 2.0f, 30.0f);
-        //ImGui::SliderFloat("Line Width", &m_lineWidth, 2.0f, 30.0f);
-
-        ImGui::Text("mode:");
-        ImGui::RadioButton("function", &m_mode, 0);
-        ImGui::RadioButton("curve", &m_mode, 1);
-
-        if (m_mode == 1)
+        if (m_mode != 2)
         {
-            ImGui::Text("parameter method:");
-            ImGui::RadioButton("uniform", &m_parameterMethod, 0);
-            ImGui::RadioButton("chord_length", &m_parameterMethod, 1);
+            ImGui::Text("Press DELETE to delete one point and SPACE to clear all points");
+
+            ImGui::Text("mode:");
+            ImGui::RadioButton("function", &m_mode, 0);
+            ImGui::RadioButton("curve", &m_mode, 1);
+
+            if (m_mode == 1)
+            {
+                ImGui::Text("parameter method:");
+                ImGui::RadioButton("uniform", &m_parameterMethod, 0);
+                ImGui::RadioButton("chord_length", &m_parameterMethod, 1);
+            }
+
+            // 在ImGui中创建输入框，用于手动输入坐标
+
+            ImGui::InputText("X", m_inputX, IM_ARRAYSIZE(m_inputX));
+            ImGui::InputText("Y", m_inputY, IM_ARRAYSIZE(m_inputY));
+            // 在ImGui中创建按钮，用于确定坐标
+            if (ImGui::Button("Confirm"))
+            {
+                float x = atof(m_inputX);
+                float y = atof(m_inputY);
+                printf("Add Point: (%.2f, %.2f)\n", x, y);
+                AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
+            }
+            if (ImGui::Button("edit mode"))
+            {
+                m_mode = 2;
+                CopyCurve();
+            }
         }
-        
-        // 在ImGui中创建输入框，用于手动输入坐标
-
-        ImGui::InputText("X", m_inputX, IM_ARRAYSIZE(m_inputX));
-        ImGui::InputText("Y", m_inputY, IM_ARRAYSIZE(m_inputY));
-        // 在ImGui中创建按钮，用于确定坐标
-        if (ImGui::Button("Confirm"))
+        else if (m_mode == 2)//编辑模式
         {
-            float x = atof(m_inputX);
-            float y = atof(m_inputY);
-            printf("Add Point: (%.2f, %.2f)\n", x, y);
-            AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
+            if (ImGui::Button("exit edit mode"))
+            {
+                m_mode = 1;
+            }
         }
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        {
+            ImGui::OpenPopup("Options");
+        }
+
+        if (ImGui::BeginPopup("Options"))
+        {
+            if (m_mode != 2)
+            {
+                if (ImGui::MenuItem("Delete One"))
+                {
+                    DeletePoint();
+                }
+                if (ImGui::MenuItem("Clear All"))
+                {
+                    ClearPoint();
+                }
+            }
+            if (m_mode == 2)
+            {
+                int index;
+                if ((index = m_pointOnCursor) != -1)
+                {
+                    switch (m_pointsStatus[index].mode)
+                    {
+                    case 0:
+                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "now:C1");
+                        break;
+                    case 1:
+                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "now:G1");
+                        break;
+                    case 2:
+                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "now:G0");
+                        break;
+                    }
+                    if (ImGui::MenuItem("c1"))
+                    {
+                        m_pointsStatus[index].mode = PointMode::c1;
+                    }
+                    if (ImGui::MenuItem("g1"))
+                    {
+                        m_pointsStatus[index].mode = PointMode::g1;
+                    }
+                    if (ImGui::MenuItem("g0"))
+                    {
+                        m_pointsStatus[index].mode = PointMode::g0;
+                    }
+                }
+            }
+
+            ImGui::EndPopup();
+        }
 
     }
 
@@ -144,24 +235,92 @@ namespace module {
         float x = (xpos - ((float)width / 2.0f)) * 20.0f / float(width);
         float y = -(ypos - ((float)height / 2.0f)) * 20.0f / float(height);
 
-        if (m_draggingPoint == true)
+        if (m_controlVertexOnCursor == -1)//如果光标在控制点上，就没必要去执行曲线点的逻辑
         {
-            m_points[m_pointOnCursor].position = { x, y, 0.0f };
-            return;
-        }
-
-        if (m_pointOnCursor != -1)
-            m_points[m_pointOnCursor].color = { 1.0f, 0.0f, 0.0f };
-        for (int i = 0;i < size;i++)
-        {
-            if (abs(m_points[i].position.x - x) < 0.1f && abs(m_points[i].position.y - y) < 0.1f)
+            if (m_draggingPoint == true)
             {
-                m_points[i].color = { 1.0f, 1.0f, 0.0f };
-                m_pointOnCursor = i;
-                return;
+                m_points[m_pointOnCursor].position = { x, y, 0.0f };
+            }
+            else//判断光标在哪个点上
+            {
+                if (m_pointOnCursor != -1)
+                    m_points[m_pointOnCursor].color = { 1.0f, 0.0f, 0.0f };
+                int i;
+                for (i = 0;i < size;i++)
+                {
+                    if (abs(m_points[i].position.x - x) < 0.1f && abs(m_points[i].position.y - y) < 0.1f)
+                    {
+                        m_points[i].color = { 1.0f, 1.0f, 0.0f };
+                        m_pointOnCursor = i;
+                        break;
+                    }
+                }
+                if (i == size)
+                    m_pointOnCursor = -1;
             }
         }
-        m_pointOnCursor = -1;
+
+        if (m_mode == 2 && m_pointOnCursor == -1)//如果光标在曲线点上，就没必要去执行控制点的逻辑
+        {
+            if (m_draggingControlVertex == true)
+            {
+                float ratio = 1.0f;//这里的ratio要和GenarateControlVertexs()
+                int controlledPointIndex = (m_controlVertexOnCursor + 1) / 2;
+
+                if (m_controlVertexOnCursor % 2 == 0)//右控制点
+                {
+                    m_pointsStatus[controlledPointIndex].rightDerivativeX = x - m_points[controlledPointIndex].position.x;
+                    m_pointsStatus[controlledPointIndex].rightDerivativeY = y - m_points[controlledPointIndex].position.y;
+                    if (m_pointsStatus[controlledPointIndex].mode == c1)
+                    {
+                        m_pointsStatus[controlledPointIndex].leftDerivativeX = m_pointsStatus[controlledPointIndex].rightDerivativeX;
+                        m_pointsStatus[controlledPointIndex].leftDerivativeY = m_pointsStatus[controlledPointIndex].rightDerivativeY;
+                    }
+                    if (m_pointsStatus[controlledPointIndex].mode == g1)
+                    {
+                        float length1 = sqrtf(pow(m_pointsStatus[controlledPointIndex].leftDerivativeX, 2) + pow(m_pointsStatus[controlledPointIndex].leftDerivativeY, 2));
+                        float length2 = sqrtf(pow(m_pointsStatus[controlledPointIndex].rightDerivativeX, 2) + pow(m_pointsStatus[controlledPointIndex].rightDerivativeY, 2));
+                        m_pointsStatus[controlledPointIndex].leftDerivativeX = m_pointsStatus[controlledPointIndex].rightDerivativeX * length1 / length2;
+                        m_pointsStatus[controlledPointIndex].leftDerivativeY = m_pointsStatus[controlledPointIndex].rightDerivativeY * length1 / length2;
+                    }
+                }
+                else
+                {
+                    m_pointsStatus[controlledPointIndex].leftDerivativeX = m_points[controlledPointIndex].position.x - x;
+                    m_pointsStatus[controlledPointIndex].leftDerivativeY = m_points[controlledPointIndex].position.y - y;
+                    if (m_pointsStatus[controlledPointIndex].mode == c1)
+                    {
+                        m_pointsStatus[controlledPointIndex].rightDerivativeX = m_pointsStatus[controlledPointIndex].leftDerivativeX;
+                        m_pointsStatus[controlledPointIndex].rightDerivativeY = m_pointsStatus[controlledPointIndex].leftDerivativeY;
+                    }
+                    if (m_pointsStatus[controlledPointIndex].mode == g1)
+                    {
+                        float length2 = sqrtf(pow(m_pointsStatus[controlledPointIndex].leftDerivativeX, 2) + pow(m_pointsStatus[controlledPointIndex].leftDerivativeY, 2));
+                        float length1 = sqrtf(pow(m_pointsStatus[controlledPointIndex].rightDerivativeX, 2) + pow(m_pointsStatus[controlledPointIndex].rightDerivativeY, 2));
+                        m_pointsStatus[controlledPointIndex].rightDerivativeX = m_pointsStatus[controlledPointIndex].leftDerivativeX * length1 / length2;
+                        m_pointsStatus[controlledPointIndex].rightDerivativeY = m_pointsStatus[controlledPointIndex].leftDerivativeY * length1 / length2;
+                    }
+                }
+            }
+            else//判断光标在哪个控制点上
+            {
+                //if (m_controlVertexOnCursor != -1)
+                //    m_ControlVertexs[m_controlVertexOnCursor].color = { 1.0f, 0.7f, 0.4f };
+                int i;
+                for (i = 0;i < size * 2 - 2;i++)
+                {
+                    
+                    if (abs(m_ControlVertexs[i].position.x - x) < 0.1f && abs(m_ControlVertexs[i].position.y - y) < 0.1f)
+                    {
+                        //m_ControlVertexs[i].color = { 1.0f, 1.0f, 0.0f };//这里改颜色没用，会被GenarateControlVertexs()覆盖
+                        m_controlVertexOnCursor = i;
+                        break;
+                    }
+                }
+                if (i == size * 2 - 2)
+                    m_controlVertexOnCursor = -1;
+            }
+        }
     }
 
     void Homework4::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -172,11 +331,7 @@ namespace module {
         }
         if (key == GLFW_KEY_DELETE && action == GLFW_PRESS)
         {
-            if (m_points.size() != 0)
-            {
-                m_points.pop_back();
-                m_indices.pop_back();
-            }
+            DeletePoint();
         }
     }
 
@@ -191,17 +346,33 @@ namespace module {
             float x = (xpos - ((float)width / 2.0f)) * 20.0f / float(width);
             float y = -(ypos - ((float)height / 2.0f)) * 20.0f / float(height);
 
-            if(m_pointOnCursor == -1)
-                AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
-            else
+            if (m_mode != 2)
             {
-                //进入拖动点的状态
-                m_draggingPoint = true;
+                if (m_pointOnCursor == -1)
+                    AddPoint({ x, y, 0.0f }, { 1.0f, 0.0f, 0.0f });
+                else
+                {
+                    //进入拖动点的状态
+                    m_draggingPoint = true;
+                }
             }
+            else if (m_mode == 2)
+            {
+                if (m_pointOnCursor != -1)
+                {
+                    m_draggingPoint = true;
+                }
+                else if (m_controlVertexOnCursor != -1)
+                {
+                    m_draggingControlVertex = true;
+                }
+            }
+            
         }
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
         {
             m_draggingPoint = false;
+            m_draggingControlVertex = false;
         }
     }
 
@@ -217,6 +388,15 @@ namespace module {
         m_points.clear();
         m_indices.clear();
         m_functionShouldUpdate = true;
+    }
+
+    void Homework4::DeletePoint()
+    {
+        if (m_points.size() != 0)
+        {
+            m_points.pop_back();
+            m_indices.pop_back();
+        }
     }
 
     void Homework4::SortPoint()
@@ -302,7 +482,7 @@ namespace module {
             m_parameter.clear();
             for (int i = 0;i < size;i++)
             {
-                m_parameter.push_back((float)i);
+                m_parameter.push_back((float)i*4);
             }
         }
         else if (m_parameterMethod == 1)
@@ -329,16 +509,7 @@ namespace module {
         if (size < 2)
             return;
 
-        m_h.clear();
-        m_h2.clear();
-        m_h3.clear();
-        m_m.clear();
-        for (int i = 0;i < size - 1;i++)
-        {
-            m_h.push_back(m_points[i + 1].position.x - m_points[i].position.x);
-            m_h2.push_back(pow(m_h[i], 2));
-            m_h3.push_back(pow(m_h[i], 3));
-        }
+        CalculateH();
 
         /*
         Eigen::MatrixXd matrix_A(size, size);
@@ -439,16 +610,7 @@ namespace module {
         if (size < 2)
             return;
 
-        m_h.clear();
-        m_h2.clear();
-        m_h3.clear();
-        m_m.clear();
-        for (int i = 0;i < size - 1;i++)
-        {
-            m_h.push_back(m_parameter[i + 1] - m_parameter[i]);
-            m_h2.push_back(pow(m_h[i], 2));
-            m_h3.push_back(pow(m_h[i], 3));
-        }
+        CalculateH();
 
         /*
         Eigen::MatrixXd matrix_A(size, size);
@@ -562,19 +724,142 @@ namespace module {
     glm::vec3 Homework4::fittingCurve(int i, float t)
     {
         // i 表示第几段函数，i=0,1,2,....,n-2
-        float x1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.x;
-        float x2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.x;
-        float x3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_m[2 * i];
-        float x4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_m[2 * (i + 1)];
 
-        float y1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.y;
-        float y2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.y;
-        float y3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_m[2 * i + 1];
-        float y4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_m[2 * (i + 1) + 1];
+        if (m_mode == 1)
+        {
+            float x1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.x;
+            float x2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.x;
+            float x3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_m[2 * i];
+            float x4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_m[2 * (i + 1)];
 
-        if (std::isnan(x1) || std::isnan(x2) || std::isnan(x3) || std::isnan(x4) || std::isnan(y1) || std::isnan(y2) || std::isnan(y3) || std::isnan(y4))
-            std::cout << "error:两点过近,计算中出现了除0操作" << std::endl << "请按空格清除顶点" << std::endl;
-        return { (x1 + x2 + x3 + x4), (y1 + y2 + y3 + y4), 0.0f };
+            float y1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.y;
+            float y2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.y;
+            float y3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_m[2 * i + 1];
+            float y4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_m[2 * (i + 1) + 1];
+
+            if (std::isnan(x1) || std::isnan(x2) || std::isnan(x3) || std::isnan(x4) || std::isnan(y1) || std::isnan(y2) || std::isnan(y3) || std::isnan(y4))
+                std::cout << "error:两点过近,计算中出现了除0操作" << std::endl << "请按空格清除顶点" << std::endl;
+            return { (x1 + x2 + x3 + x4), (y1 + y2 + y3 + y4), 0.0f };
+        }
+        else if (m_mode == 2)//编辑模式，唯一不同的是m
+        {
+            float x1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.x;
+            float x2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.x;
+            float x3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_pointsStatus[i].rightDerivativeX;
+            float x4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_pointsStatus[i + 1].leftDerivativeX;
+
+            float y1 = pow(t - m_parameter[i + 1], 2) * (m_h[i] + 2 * (t - m_parameter[i])) / m_h3[i] * m_points[i].position.y;
+            float y2 = pow(t - m_parameter[i], 2) * (m_h[i] + 2 * (m_parameter[i + 1] - t)) / m_h3[i] * m_points[i + 1].position.y;
+            float y3 = pow(t - m_parameter[i + 1], 2) * (t - m_parameter[i]) / m_h2[i] * m_pointsStatus[i].rightDerivativeY;
+            float y4 = pow(t - m_parameter[i], 2) * (t - m_parameter[i + 1]) / m_h2[i] * m_pointsStatus[i + 1].leftDerivativeY;
+
+            if (std::isnan(x1) || std::isnan(x2) || std::isnan(x3) || std::isnan(x4) || std::isnan(y1) || std::isnan(y2) || std::isnan(y3) || std::isnan(y4))
+                std::cout << "error:两点过近,计算中出现了除0操作" << std::endl << "请按空格清除顶点" << std::endl;
+            return { (x1 + x2 + x3 + x4), (y1 + y2 + y3 + y4), 0.0f };
+        }
     }
 
+    void Homework4::GenarateControlVertexs()
+    {
+        /*if (m_parameterMethod != 1)
+            return;*/
+        m_ControlLines.clear();
+        m_ControlVertexs.clear();
+        int size = m_points.size();
+        if (size < 2)
+            return;
+
+        glm::vec3 pointColor = { 1.0f, 0.7f, 0.4f };
+        glm::vec3 lineColor = { 1.0f, 0.5f, 0.0f };
+        float ratio = 1.0f;//这里的ratio要和CursorPosCallback()里的保持一致
+
+        if (m_mode == 1)
+        {
+            m_ControlVertexs.push_back({ { m_points[0].position.x + ratio * m_m[0], m_points[0].position.y + ratio * m_m[1],0.0f }, pointColor });
+            m_ControlLines.push_back({ m_points[0].position, lineColor });
+            m_ControlLines.push_back({ { m_points[0].position.x + ratio * m_m[0], m_points[0].position.y + ratio * m_m[1],0.0f }, lineColor });
+            for (int i = 1; i < size - 1; i++)
+            {
+                m_ControlVertexs.push_back({ { m_points[i].position.x - ratio * m_m[2 * i], m_points[i].position.y - ratio * m_m[2 * i + 1],0.0f }, pointColor });
+                m_ControlLines.push_back({ m_points[i].position, lineColor });
+                m_ControlLines.push_back({ { m_points[i].position.x - ratio * m_m[2 * i], m_points[i].position.y - ratio * m_m[2 * i + 1],0.0f }, lineColor });
+
+                m_ControlVertexs.push_back({ { m_points[i].position.x + ratio * m_m[2 * i], m_points[i].position.y + ratio * m_m[2 * i + 1],0.0f }, pointColor });
+                m_ControlLines.push_back({ m_points[i].position, lineColor });
+                m_ControlLines.push_back({ { m_points[i].position.x + ratio * m_m[2 * i], m_points[i].position.y + ratio * m_m[2 * i + 1],0.0f }, lineColor });
+            }
+            m_ControlVertexs.push_back({ { m_points[size - 1].position.x - ratio * m_m[2 * (size - 1)], m_points[size - 1].position.y - ratio * m_m[2 * (size - 1) + 1],0.0f }, pointColor });
+            m_ControlLines.push_back({ m_points[size - 1].position, lineColor });
+            m_ControlLines.push_back({ { m_points[size - 1].position.x - ratio * m_m[2 * (size - 1)], m_points[size - 1].position.y - ratio * m_m[2 * (size - 1) + 1],0.0f }, lineColor });
+        }
+        else if (m_mode == 2)
+        {
+            m_ControlVertexs.push_back({ { m_points[0].position.x + ratio * m_pointsStatus[0].rightDerivativeX, m_points[0].position.y + ratio * m_pointsStatus[0].rightDerivativeY,0.0f }, pointColor });
+            m_ControlLines.push_back({ m_points[0].position, lineColor });
+            m_ControlLines.push_back({ { m_points[0].position.x + ratio * m_pointsStatus[0].rightDerivativeX, m_points[0].position.y + ratio * m_pointsStatus[0].rightDerivativeY,0.0f }, lineColor });
+            for (int i = 1; i < size - 1; i++)
+            {
+                m_ControlVertexs.push_back({ { m_points[i].position.x - ratio * m_pointsStatus[i].leftDerivativeX, m_points[i].position.y - ratio * m_pointsStatus[i].leftDerivativeY,0.0f}, pointColor});
+                m_ControlLines.push_back({ m_points[i].position, lineColor });
+                m_ControlLines.push_back({ { m_points[i].position.x - ratio * m_pointsStatus[i].leftDerivativeX, m_points[i].position.y - ratio * m_pointsStatus[i].leftDerivativeY,0.0f }, lineColor });
+
+                m_ControlVertexs.push_back({ { m_points[i].position.x + ratio * m_pointsStatus[i].rightDerivativeX, m_points[i].position.y + ratio * m_pointsStatus[i].rightDerivativeY,0.0f }, pointColor });
+                m_ControlLines.push_back({ m_points[i].position, lineColor });
+                m_ControlLines.push_back({ { m_points[i].position.x + ratio * m_pointsStatus[i].rightDerivativeX, m_points[i].position.y + ratio * m_pointsStatus[i].rightDerivativeY,0.0f }, lineColor });
+            }
+            m_ControlVertexs.push_back({ { m_points[size - 1].position.x - ratio * m_pointsStatus[size - 1].leftDerivativeX, m_points[size - 1].position.y - ratio * m_pointsStatus[size - 1].leftDerivativeY, 0.0f}, pointColor});
+            m_ControlLines.push_back({ m_points[size - 1].position, lineColor });
+            m_ControlLines.push_back({ { m_points[size - 1].position.x - ratio * m_pointsStatus[size - 1].leftDerivativeX, m_points[size - 1].position.y - ratio * m_pointsStatus[size - 1].leftDerivativeY, 0.0f }, lineColor });
+
+            if (m_controlVertexOnCursor != -1)
+            {
+                m_ControlVertexs[m_controlVertexOnCursor].color = { 1.0f, 1.0f, 0.0f };
+                m_ControlLines[2 * m_controlVertexOnCursor].color = { 1.0f, 1.0f, 1.0f };
+                m_ControlLines[2 * m_controlVertexOnCursor + 1].color = { 1.0f, 1.0f, 1.0f };
+            }
+
+        }
+
+    }
+
+    void Homework4::CopyCurve()
+    {
+        //进入编辑模式时调用，从非编辑模式复制一条曲线到改模式
+        int size = m_points.size();
+        if (size < 2)
+            return;
+
+        m_pointsStatus.clear();
+        for (int i = 0; i < size; i++)
+        {
+            m_pointsStatus.push_back({ PointMode::c1, m_m[2 * i], m_m[2 * i + 1], m_m[2 * i], m_m[2 * i + 1] });
+        }
+    }
+
+    void Homework4::CalculateH()
+    {
+        int size = m_points.size();
+        m_h.clear();
+        m_h2.clear();
+        m_h3.clear();
+        m_m.clear();
+        if (m_mode == 0)
+        {
+            for (int i = 0;i < size - 1;i++)
+            {
+                m_h.push_back(m_points[i + 1].position.x - m_points[i].position.x);
+                m_h2.push_back(pow(m_h[i], 2));
+                m_h3.push_back(pow(m_h[i], 3));
+            }
+        }
+        else
+        {
+            for (int i = 0;i < size - 1;i++)
+            {
+                m_h.push_back(m_parameter[i + 1] - m_parameter[i]);
+                m_h2.push_back(pow(m_h[i], 2));
+                m_h3.push_back(pow(m_h[i], 3));
+            }
+        }
+    }
 }
