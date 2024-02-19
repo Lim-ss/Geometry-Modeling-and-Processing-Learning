@@ -138,6 +138,7 @@
     <ClCompile Include="src\homeworks\Homework1.cpp" />
     <ClCompile Include="src\homeworks\Homework3.cpp" />
     <ClCompile Include="src\homeworks\Homework4.cpp" />
+    <ClCompile Include="src\homeworks\Homework5.cpp" />
     <ClCompile Include="src\homeworks\Module.cpp" />
     <ClCompile Include="src\IndexBuffer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
@@ -333,6 +334,7 @@
     <ClInclude Include="src\homeworks\Homework1.h" />
     <ClInclude Include="src\homeworks\Homework3.h" />
     <ClInclude Include="src\homeworks\Homework4.h" />
+    <ClInclude Include="src\homeworks\Homework5.h" />
     <ClInclude Include="src\homeworks\Module.h" />
     <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\Renderer.h" />

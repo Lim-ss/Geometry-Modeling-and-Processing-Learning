@@ -78,6 +78,9 @@
     <ClCompile Include="src\homeworks\Homework4.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\Homework5.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -2375,6 +2378,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\homeworks\Homework4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\Homework5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
