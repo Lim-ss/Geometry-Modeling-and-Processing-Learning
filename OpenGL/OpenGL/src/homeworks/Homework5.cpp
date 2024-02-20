@@ -23,8 +23,9 @@ namespace module {
         m_View(glm::mat4(1.0f)),
         m_Model(glm::mat4(1.0f)),
         m_MVP(glm::mat4(1.0f)),
-        m_pointSize(10.0f),
-        m_lineWidth(5.0f),
+        m_pointSize(5.0f),
+        m_lineWidth(3.0f),
+        m_alpha(0.125f),
         m_link(false),
         m_currentBuffer(CurrentBuffer::A),
         m_IO(ImGui::GetIO())
@@ -83,8 +84,14 @@ namespace module {
             Link();//首尾相接
         if (ImGui::Button("Chaiukin2"))
             Chaiukin2();
+        if (ImGui::Button("Chaiukin3"))
+            Chaiukin3();
+        if (ImGui::Button("4 point subdivision"))
+            fourPointInterpolatorySubdivision();
         if (ImGui::Button("Clear Point"))
             ClearPoint();
+
+        ImGui::SliderFloat("alpha", &m_alpha, 0.0f, 0.5f);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
 
@@ -189,6 +196,88 @@ namespace module {
             }
             m_pointsA.push_back({ 0.75f * m_pointsB[m_pointsB.size() - 1].position + 0.25f * m_pointsB[0].position, {1.0f, 0.0f, 0.0f} });
             m_pointsA.push_back({ 0.25f * m_pointsB[m_pointsB.size() - 1].position + 0.75f * m_pointsB[0].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsB.clear();
+            m_currentBuffer = A;
+            Link();
+        }
+    }
+
+    void Homework5::Chaiukin3()
+    {
+        if (m_link == false)//只处理封闭曲线
+            return;
+
+        if (m_currentBuffer == A)
+        {
+            UnLink();
+            m_pointsB.push_back({ 0.75f * m_pointsA[0].position + 0.125f * m_pointsA[m_pointsA.size() - 1].position + 0.125f * m_pointsA[1].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsB.push_back({ 0.5f * m_pointsA[0].position + 0.5f * m_pointsA[1].position, {1.0f, 0.0f, 0.0f} });
+            for (int i = 1;i < m_pointsA.size() - 1; i++)
+            {
+                m_pointsB.push_back({ 0.75f * m_pointsA[i].position + 0.125f * m_pointsA[i - 1].position + 0.125f * m_pointsA[i + 1].position, {1.0f, 0.0f, 0.0f} });
+                m_pointsB.push_back({ 0.5f * m_pointsA[i].position + 0.5f * m_pointsA[i + 1].position, {1.0f, 0.0f, 0.0f} });
+            }
+            m_pointsB.push_back({ 0.75f * m_pointsA[m_pointsA.size() - 1].position + 0.125f * m_pointsA[m_pointsA.size() - 2].position + 0.125f * m_pointsA[0].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsB.push_back({ 0.5f * m_pointsA[m_pointsA.size() - 1].position + 0.5f * m_pointsA[0].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsA.clear();
+            m_currentBuffer = B;
+            Link();
+        }
+        else
+        {
+            UnLink();
+            m_pointsA.push_back({ 0.75f * m_pointsB[0].position + 0.125f * m_pointsB[m_pointsB.size() - 1].position + 0.125f * m_pointsB[1].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsA.push_back({ 0.5f * m_pointsB[0].position + 0.5f * m_pointsB[1].position, {1.0f, 0.0f, 0.0f} });
+            for (int i = 1;i < m_pointsB.size() - 1; i++)
+            {
+                m_pointsA.push_back({ 0.75f * m_pointsB[i].position + 0.125f * m_pointsB[i - 1].position + 0.125f * m_pointsB[i + 1].position, {1.0f, 0.0f, 0.0f} });
+                m_pointsA.push_back({ 0.5f * m_pointsB[i].position + 0.5f * m_pointsB[i + 1].position, {1.0f, 0.0f, 0.0f} });
+            }
+            m_pointsA.push_back({ 0.75f * m_pointsB[m_pointsB.size() - 1].position + 0.125f * m_pointsB[m_pointsB.size() - 2].position + 0.125f * m_pointsB[0].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsA.push_back({ 0.5f * m_pointsB[m_pointsB.size() - 1].position + 0.5f * m_pointsB[0].position, {1.0f, 0.0f, 0.0f} });
+            m_pointsB.clear();
+            m_currentBuffer = A;
+            Link();
+        }
+    }
+
+    void Homework5::fourPointInterpolatorySubdivision()
+    {
+        if (m_link == false)//只处理封闭曲线
+            return;
+
+        if (m_currentBuffer == A)
+        {
+            UnLink();
+            m_pointsB.push_back(m_pointsA[0]);
+            m_pointsB.push_back({ 0.5f * (1 + m_alpha) * (m_pointsA[0].position + m_pointsA[1].position) - 0.5f * m_alpha * (m_pointsA[m_pointsA.size() - 1].position + m_pointsA[2].position), {1.0f, 0.0f, 0.0f} });
+            for (int i = 1;i < m_pointsA.size() - 2; i++)
+            {
+                m_pointsB.push_back(m_pointsA[i]);
+                m_pointsB.push_back({ 0.5f * (1 + m_alpha) * (m_pointsA[i].position + m_pointsA[i + 1].position) - 0.5f * m_alpha * (m_pointsA[i - 1].position + m_pointsA[i + 1].position), {1.0f, 0.0f, 0.0f} });
+            }
+            m_pointsB.push_back(m_pointsA[m_pointsA.size() - 2]);
+            m_pointsB.push_back({ 0.5f * (1 + m_alpha) * (m_pointsA[m_pointsA.size() - 2].position + m_pointsA[m_pointsA.size() - 1].position) - 0.5f * m_alpha * (m_pointsA[m_pointsA.size() - 3].position + m_pointsA[0].position), {1.0f, 0.0f, 0.0f} });
+            m_pointsB.push_back(m_pointsA[m_pointsA.size() - 1]);
+            m_pointsB.push_back({ 0.5f * (1 + m_alpha) * (m_pointsA[m_pointsA.size() - 1].position + m_pointsA[0].position) - 0.5f * m_alpha * (m_pointsA[m_pointsA.size() - 2].position + m_pointsA[1].position), {1.0f, 0.0f, 0.0f} });
+            m_pointsA.clear();
+            m_currentBuffer = B;
+            Link();
+        }
+        else
+        {
+            UnLink();
+            m_pointsA.push_back(m_pointsB[0]);
+            m_pointsA.push_back({ 0.5f * (1 + m_alpha) * (m_pointsB[0].position + m_pointsB[1].position) - 0.5f * m_alpha * (m_pointsB[m_pointsB.size() - 1].position + m_pointsB[2].position), {1.0f, 0.0f, 0.0f} });
+            for (int i = 1;i < m_pointsB.size() - 2; i++)
+            {
+                m_pointsA.push_back(m_pointsB[i]);
+                m_pointsA.push_back({ 0.5f * (1 + m_alpha) * (m_pointsB[i].position + m_pointsB[i + 1].position) - 0.5f * m_alpha * (m_pointsB[i - 1].position + m_pointsB[i + 1].position), {1.0f, 0.0f, 0.0f} });
+            }
+            m_pointsA.push_back(m_pointsB[m_pointsB.size() - 2]);
+            m_pointsA.push_back({ 0.5f * (1 + m_alpha) * (m_pointsB[m_pointsB.size() - 2].position + m_pointsB[m_pointsB.size() - 1].position) - 0.5f * m_alpha * (m_pointsB[m_pointsB.size() - 3].position + m_pointsB[0].position), {1.0f, 0.0f, 0.0f} });
+            m_pointsA.push_back(m_pointsB[m_pointsB.size() - 1]);
+            m_pointsA.push_back({ 0.5f * (1 + m_alpha) * (m_pointsB[m_pointsB.size() - 1].position + m_pointsB[0].position) - 0.5f * m_alpha * (m_pointsB[m_pointsB.size() - 2].position + m_pointsB[1].position), {1.0f, 0.0f, 0.0f} });
             m_pointsB.clear();
             m_currentBuffer = A;
             Link();

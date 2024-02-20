@@ -37,6 +37,8 @@ namespace module {
 		void UnLink();
 
 		void Chaiukin2();
+		void Chaiukin3();
+		void fourPointInterpolatorySubdivision();
 
 	private:
 		std::vector<VertexBuffer::point> m_pointsA;
@@ -49,6 +51,7 @@ namespace module {
 
 		float m_pointSize;
 		float m_lineWidth;
+		float m_alpha;
 
 		bool m_link;
 		enum CurrentBuffer
