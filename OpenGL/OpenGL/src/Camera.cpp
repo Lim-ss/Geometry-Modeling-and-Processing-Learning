@@ -7,7 +7,7 @@ float Camera::pitch = 0.0f;
 bool Camera::CursorDisabled = false;
 
 Camera::Camera(glm::mat4& View)
-	:m_cameraPos(0.0f, 0.0f, 10.0f),
+	:m_cameraPos(0.0f, 0.0f, 3.0f),
 	m_cameraFront(0.0f, 0.0f, -1.0f),
 	m_cameraUp(0.0f, 1.0f, 0.0f),
 	m_View(View),
@@ -30,7 +30,7 @@ void Camera::CameraUpdate(float deltaTime)
 {
     GLFWwindow* window = glfwGetCurrentContext();
 
-    float cameraMoveDistance = 80.0f * deltaTime;
+    float cameraMoveDistance = 1.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         m_cameraPos += cameraMoveDistance * m_cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

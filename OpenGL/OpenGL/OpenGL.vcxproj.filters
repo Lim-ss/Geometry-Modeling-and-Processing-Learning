@@ -81,6 +81,9 @@
     <ClCompile Include="src\homeworks\Homework5.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\Homework6.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -530,6 +533,7 @@
     <None Include="src\vendor\Eigen\SuperLUSupport" />
     <None Include="src\vendor\Eigen\SVD" />
     <None Include="src\vendor\Eigen\UmfPackSupport" />
+    <None Include="res\shaders\Homework6.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Renderer.h">
@@ -2381,6 +2385,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\homeworks\Homework5.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\Homework6.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
