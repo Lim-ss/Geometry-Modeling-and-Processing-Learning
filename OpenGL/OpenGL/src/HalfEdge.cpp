@@ -30,36 +30,6 @@ void Sort(int& a, int& b, int& c)
     return;
 }
 
-void AdjustTriangleDiretion(HE::Face* face)
-{
-    /*指定一个三角面,改变其所有半边方向，并递归地调用以使得临近的三角形符合对偶规则*/
-    HE::HalfEdge* edge1 = face->edge;
-    HE::HalfEdge* edge2 = edge1->nextEdge;
-    HE::HalfEdge* edge3 = edge2->nextEdge;
-
-    HE::Vertex* vertex1 = edge1->vertex;
-    HE::Vertex* vertex2 = edge2->vertex;
-    HE::Vertex* vertex3 = edge3->vertex;
-
-    edge1->vertex = vertex3;
-    edge2->vertex = vertex1;
-    edge3->vertex = vertex2;
-
-    edge1->nextEdge = edge3;
-    edge2->nextEdge = edge1;
-    edge3->nextEdge = edge2;
-
-    //递归调用函数结束才可以判断下一个邻面是否需要调用，否则可能出现重复翻转一个面的情况
-    if (edge1->oppositeEdge != nullptr && edge1->oppositeEdge->vertex == edge1->vertex)
-        AdjustTriangleDiretion(edge1->oppositeEdge->face);
-    if (edge2->oppositeEdge != nullptr && edge2->oppositeEdge->vertex == edge2->vertex)
-        AdjustTriangleDiretion(edge2->oppositeEdge->face);
-    if (edge3->oppositeEdge != nullptr && edge3->oppositeEdge->vertex == edge3->vertex)
-        AdjustTriangleDiretion(edge3->oppositeEdge->face);
-
-    return;
-}
-
 namespace HE {
 
 	Mesh::Mesh(const std::string& filepath)
@@ -96,7 +66,7 @@ namespace HE {
                 //if (face.mNumIndices != 3)//其实可以不判断，因为加载时用了aiProcess_Triangulate参数
                 //    continue;
 
-                m_Faces[i].edge = &m_Edges[i * 3];
+                m_Faces[i].edgeIndex = i * 3;
             }
 
             /*下面分五步创建半边列表*/
@@ -114,21 +84,21 @@ namespace HE {
                 Sort(v0, v1, v2);
 
                 //step1.先不管对偶边，直接创建所有半边
-                m_Edges[e0].vertex = &m_Vertices[v0];
-                m_Edges[e1].vertex = &m_Vertices[v1];
-                m_Edges[e2].vertex = &m_Vertices[v2];
+                m_Edges[e0].vertexIndex = v0;
+                m_Edges[e1].vertexIndex = v1;
+                m_Edges[e2].vertexIndex = v2;
 
-                m_Edges[e0].face = &m_Faces[i];
-                m_Edges[e1].face = &m_Faces[i];
-                m_Edges[e2].face = &m_Faces[i];
+                m_Edges[e0].faceIndex = i;
+                m_Edges[e1].faceIndex = i;
+                m_Edges[e2].faceIndex = i;
 
-                m_Edges[e0].oppositeEdge = nullptr;
-                m_Edges[e1].oppositeEdge = nullptr;
-                m_Edges[e2].oppositeEdge = nullptr;
+                m_Edges[e0].oppositeEdgeIndex = -1;
+                m_Edges[e1].oppositeEdgeIndex = -1;
+                m_Edges[e2].oppositeEdgeIndex = -1;
 
-                m_Edges[e0].nextEdge = &m_Edges[e1];
-                m_Edges[e1].nextEdge = &m_Edges[e2];
-                m_Edges[e2].nextEdge = &m_Edges[e0];
+                m_Edges[e0].nextEdgeIndex = e1;
+                m_Edges[e1].nextEdgeIndex = e2;
+                m_Edges[e2].nextEdgeIndex = e0;
             }
             for (unsigned int i = 0; i < mesh->mNumFaces; i++)
             {
@@ -144,8 +114,8 @@ namespace HE {
                 //step2.先不管对偶半边方向，强行配对同一边上的半边
                 if (cache1.find({ v0, v1 }) != cache1.end())
                 {
-                    m_Edges[e0].oppositeEdge = &m_Edges[cache1[{ v0, v1 }]];
-                    m_Edges[cache1[{ v0, v1 }]].oppositeEdge = &m_Edges[e0];
+                    m_Edges[e1].oppositeEdgeIndex = cache1[{ v0, v1 }];
+                    m_Edges[cache1[{ v0, v1 }]].oppositeEdgeIndex = e1;
                     cache1.erase({ v0, v1 });
                 }
                 else
@@ -154,8 +124,8 @@ namespace HE {
                 }
                 if (cache1.find({ v1, v2 }) != cache1.end())
                 {
-                    m_Edges[e1].oppositeEdge = &m_Edges[cache1[{ v1, v2 }]];
-                    m_Edges[cache1[{ v1, v2 }]].oppositeEdge = &m_Edges[e1];
+                    m_Edges[e2].oppositeEdgeIndex = cache1[{ v1, v2 }];
+                    m_Edges[cache1[{ v1, v2 }]].oppositeEdgeIndex = e2;
                     cache1.erase({ v1, v2 });
                 }
                 else
@@ -164,8 +134,8 @@ namespace HE {
                 }
                 if (cache1.find({ v0, v2 }) != cache1.end())
                 {
-                    m_Edges[e2].oppositeEdge = &m_Edges[cache1[{ v0, v2 }]];
-                    m_Edges[cache1[{ v0, v2 }]].oppositeEdge = &m_Edges[e2];
+                    m_Edges[e0].oppositeEdgeIndex = cache1[{ v0, v2 }];
+                    m_Edges[cache1[{ v0, v2 }]].oppositeEdgeIndex = e0;
                     cache1.erase({ v0, v2 });
                 }
                 else
@@ -187,12 +157,12 @@ namespace HE {
                 Sort(v0, v1, v2);
 
                 //step3.调整对边使得方向相反
-                if (m_Edges[e0].oppositeEdge != nullptr && m_Edges[e0].oppositeEdge->vertex == m_Edges[e0].vertex)
-                    AdjustTriangleDiretion(m_Edges[e0].oppositeEdge->face);
-                if (m_Edges[e1].oppositeEdge != nullptr && m_Edges[e1].oppositeEdge->vertex == m_Edges[e1].vertex)
-                    AdjustTriangleDiretion(m_Edges[e1].oppositeEdge->face);
-                if (m_Edges[e2].oppositeEdge != nullptr && m_Edges[e2].oppositeEdge->vertex == m_Edges[e2].vertex)
-                    AdjustTriangleDiretion(m_Edges[e2].oppositeEdge->face);
+                if (m_Edges[e0].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e0].oppositeEdgeIndex].vertexIndex == m_Edges[e0].vertexIndex)
+                    AdjustTriangleDiretion(m_Edges[m_Edges[e0].oppositeEdgeIndex].faceIndex);
+                if (m_Edges[e1].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e1].oppositeEdgeIndex].vertexIndex == m_Edges[e1].vertexIndex)
+                    AdjustTriangleDiretion(m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex);
+                if (m_Edges[e2].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e2].oppositeEdgeIndex].vertexIndex == m_Edges[e2].vertexIndex)
+                    AdjustTriangleDiretion(m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex);
 
             }
             //step4.补齐哈希表1中剩下半边的对边(网格边缘)
@@ -202,31 +172,31 @@ namespace HE {
                 int v0 = std::get<0>(pair.first);
                 int v1 = std::get<1>(pair.first);
                 int e = pair.second;
-                int v = std::distance(m_Vertices.data(), m_Edges[e].vertex);//e指向的顶点的index
+                int v = m_Edges[e].vertexIndex;
 
                 if (v == v0)
                 {
-                    newEdge.vertex = &m_Vertices[v1];
-                    newEdge.face = nullptr;
-                    newEdge.oppositeEdge = &m_Edges[e];
-                    newEdge.nextEdge = nullptr;
+                    newEdge.vertexIndex = v1;
+                    newEdge.faceIndex = -1;
+                    newEdge.oppositeEdgeIndex = e;
+                    newEdge.nextEdgeIndex = -1;
 
                     m_Edges.push_back(newEdge);
                     cache2[v0] = m_Edges.size() - 1;
 
-                    m_Edges[e].oppositeEdge = &m_Edges.back();
+                    m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
                 }
                 else//v == v1
                 {
-                    newEdge.vertex = &m_Vertices[v0];
-                    newEdge.face = nullptr;
-                    newEdge.oppositeEdge = &m_Edges[e];
-                    newEdge.nextEdge = nullptr;
+                    newEdge.vertexIndex = v0;
+                    newEdge.faceIndex = -1;
+                    newEdge.oppositeEdgeIndex = e;
+                    newEdge.nextEdgeIndex = -1;
 
                     m_Edges.push_back(newEdge);
                     cache2[v1] = m_Edges.size() - 1;
 
-                    m_Edges[e].oppositeEdge = &m_Edges.back();
+                    m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
                 }
                 
             }
@@ -234,8 +204,8 @@ namespace HE {
             //step5.连接网格边缘的半边
             for (int i = 3 * m_Faces.size(); i < m_Edges.size(); i++)
             {
-                int v = std::distance(m_Vertices.data(), m_Edges[i].vertex);//该半边指向的顶点的index
-                m_Edges[i].nextEdge = &m_Edges[cache2[v]];
+                int v = m_Edges[i].vertexIndex;//该半边指向的顶点的index
+                m_Edges[i].nextEdgeIndex = cache2[v];
             }
 
             //创建初始的索引列表(不属于半边结构，只是用于opengl绘图，在半边结构中处理过的mesh需要调用函数以更新indices)
@@ -253,6 +223,35 @@ namespace HE {
     Mesh::~Mesh()
     {
 
+    }
+
+    void Mesh::AdjustTriangleDiretion(int faceIndex)
+    {
+        /*指定一个三角面,改变其所有半边方向，并递归地调用以使得临近的三角形符合对偶规则*/
+        int edge1Index = m_Faces[faceIndex].edgeIndex;
+        int edge2Index = m_Edges[edge1Index].nextEdgeIndex;
+        int edge3Index = m_Edges[edge2Index].nextEdgeIndex;
+
+        int vertex1Index = m_Edges[edge1Index].vertexIndex;
+        int vertex2Index = m_Edges[edge2Index].vertexIndex;
+        int vertex3Index = m_Edges[edge3Index].vertexIndex;
+
+        m_Edges[edge1Index].vertexIndex = vertex3Index;
+        m_Edges[edge2Index].vertexIndex = vertex1Index;
+        m_Edges[edge3Index].vertexIndex = vertex2Index;
+
+        m_Edges[edge1Index].nextEdgeIndex = edge3Index;
+        m_Edges[edge2Index].nextEdgeIndex = edge1Index;
+        m_Edges[edge3Index].nextEdgeIndex = edge2Index;
+
+        //递归调用函数结束才可以判断下一个邻面是否需要调用，否则可能出现重复翻转一个面的情况
+        if (m_Edges[edge1Index].oppositeEdgeIndex != -1 && m_Edges[m_Edges[edge1Index].oppositeEdgeIndex].vertexIndex == m_Edges[edge1Index].vertexIndex)
+            AdjustTriangleDiretion(m_Edges[m_Edges[edge1Index].oppositeEdgeIndex].faceIndex);
+        if (m_Edges[edge2Index].oppositeEdgeIndex != -1 && m_Edges[m_Edges[edge2Index].oppositeEdgeIndex].vertexIndex == m_Edges[edge2Index].vertexIndex)
+            AdjustTriangleDiretion(m_Edges[m_Edges[edge2Index].oppositeEdgeIndex].faceIndex);
+        if (m_Edges[edge3Index].oppositeEdgeIndex != -1 && m_Edges[m_Edges[edge3Index].oppositeEdgeIndex].vertexIndex == m_Edges[edge3Index].vertexIndex)
+            AdjustTriangleDiretion(m_Edges[m_Edges[edge3Index].oppositeEdgeIndex].faceIndex);
+        return;
     }
 
     void Mesh::PrintVertices()
@@ -278,9 +277,9 @@ namespace HE {
         printf("HalfEdges:\n");
         for (auto it = m_Edges.begin(); it != m_Edges.end(); it++)
         {
-            int vEnd = std::distance(m_Vertices.data(), it->vertex);
-            int vStart = std::distance(m_Vertices.data(), it->oppositeEdge->vertex);
-            int face = std::distance(m_Faces.data(), it->face);
+            int vEnd = it->vertexIndex;
+            int vStart = m_Edges[it->oppositeEdgeIndex].vertexIndex;
+            int face = it->faceIndex;
             printf("v:%d->%d  f:%d\n", vStart, vEnd, face);
         }
     }

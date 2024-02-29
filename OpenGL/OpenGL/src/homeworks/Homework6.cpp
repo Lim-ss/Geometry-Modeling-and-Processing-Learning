@@ -21,8 +21,10 @@ namespace module {
     {
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Nefertiti_face.obj");
         m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
+        //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/triangle.obj");
+
         m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));//调整模型大小
-        //m_Mesh->PrintVertices();
+        m_Mesh->PrintVertices();
         m_Mesh->PrintIndices();
         m_Mesh->PrintHalfEdges();
 

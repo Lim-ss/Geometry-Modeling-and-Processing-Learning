@@ -16,6 +16,7 @@ namespace HE {
     public:
         Mesh(const std::string& filepath);
         ~Mesh();
+        void AdjustTriangleDiretion(int faceIndex);
         void PrintVertices();
         void PrintIndices();
         void PrintHalfEdges();
@@ -28,20 +29,20 @@ namespace HE {
     };
 
     struct Vertex {
-        HalfEdge* edge;
+        int edgeIndex;
         glm::vec3 position;//顶点位置
         //其他属性，如法线、纹理坐标等
     };
 
     struct HalfEdge {
-        Vertex* vertex;
-        Face* face;
-        HalfEdge* oppositeEdge;  // 对向边
-        HalfEdge* nextEdge;      // 下一条边
+        int vertexIndex;
+        int faceIndex;
+        int oppositeEdgeIndex;  // 对向边
+        int nextEdgeIndex;      // 下一条边
     };
 
     struct Face {
-        HalfEdge* edge;    // 边索引
+        int edgeIndex;    // 边索引
         // 其他属性
     };
 
