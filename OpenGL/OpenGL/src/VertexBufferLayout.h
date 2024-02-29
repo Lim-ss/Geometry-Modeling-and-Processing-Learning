@@ -58,6 +58,13 @@ public:
 		m_Stride += count * VertexBufferElement::GetSizeOfType(GL_UNSIGNED_BYTE);
 	}
 
+	void Vacate(unsigned int size)
+	{
+		//空出size个字节，不传入显存，但要注意，它仍然占一个layout的id，即shader里location要跳过这个空
+		m_Elements.push_back({ 0, size, 0 });//只是用来告诉VertexArray::AddBuffer不需要传递该变量，只改变offset
+		m_Stride += size;
+	}
+
 	inline const std::vector<VertexBufferElement> GetElements() const { return m_Elements; }
 	inline unsigned int GetStride() const { return m_Stride; }
 };

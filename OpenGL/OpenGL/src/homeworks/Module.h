@@ -42,4 +42,4 @@ namespace module {
 		Module*& m_CurrentModule;
 		std::vector<std::pair<std::string, std::function<Module* ()>>> m_Modules;
 	};
-}
+}//namespace module

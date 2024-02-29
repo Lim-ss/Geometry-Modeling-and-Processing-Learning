@@ -81,6 +81,9 @@
     <ClCompile Include="src\homeworks\Homework5.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\HalfEdge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\homeworks\Homework6.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -2387,7 +2390,13 @@
     <ClInclude Include="src\homeworks\Homework5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\HalfEdge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\homeworks\Homework6.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\HashForTuple.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

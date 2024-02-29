@@ -6,6 +6,7 @@
 #include "VertexBufferLayout.h"
 #include "Texture.h"
 #include "Camera.h"
+#include "HalfEdge.h"
 
 #include "GLFW/glfw3.h"
 
@@ -15,9 +16,7 @@
 
 #include "obj-loader/OBJ-Loader.h"
 
-#include "assimp/Importer.hpp"
-#include "assimp/scene.h"
-#include "assimp/postprocess.h"
+
 
 
 namespace module {
@@ -46,11 +45,7 @@ namespace module {
 		std::unique_ptr<IndexBuffer> m_IBO;
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<Camera> m_Camera;
-
-		//objl::Loader m_ObjLoader;
-		//objl::Mesh m_Mesh;
-		aiMesh* m_Mesh;
-		std::vector<unsigned int> m_Indices;
+		std::unique_ptr<HE::Mesh> m_Mesh;
 
 		bool m_WireframeMode;
 

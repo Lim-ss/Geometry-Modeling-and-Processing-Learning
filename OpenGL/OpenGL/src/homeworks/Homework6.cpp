@@ -19,59 +19,26 @@ namespace module {
         m_IO(ImGui::GetIO()),
         m_WireframeMode(false)
     {
-        
-        //用Assimp加载obj
-        Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile("res/mesh/Nefertiti_face.obj", aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
-        if (scene)
-        {
-            std::cout << "num of meshes:" << scene->mNumMeshes << std::endl;
-            m_Mesh = scene->mMeshes[0];
-            std::cout << "num of vertices:" << m_Mesh->mNumVertices << std::endl;
-
-            for (unsigned int i = 0; i < m_Mesh->mNumVertices; i++) {
-                aiVector3D vertex = m_Mesh->mVertices[i];
-                printf("%f,%f,%f\n", vertex.x, vertex.y, vertex.z);
-            }
-
-            for (unsigned int i = 0; i < m_Mesh->mNumFaces; i++) {
-                aiFace face = m_Mesh->mFaces[i];
-                if (face.mNumIndices == 3)//其实可以不判断，因为加载时用了aiProcess_Triangulate参数
-                {
-                    m_Indices.push_back(face.mIndices[0]);
-                    m_Indices.push_back(face.mIndices[1]);
-                    m_Indices.push_back(face.mIndices[2]);
-                    printf("%u,%u,%u\n", face.mIndices[0], face.mIndices[1], face.mIndices[2]);
-                }
-            }
-        }
-        //importer.FreeScene();
-        
-        /*
-        if (m_ObjLoader.LoadFile("res/mesh/yuegui.obj") == false)
-        {
-            std::cout << "obj loader failed" << std::endl;
-        }
-        else
-        {
-            std::cout << m_ObjLoader.LoadedMeshes.size() << " mesh(s) be loaded" << std::endl;
-            m_Mesh = m_ObjLoader.LoadedMeshes[0];
-            m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.01f));//调整模型大小
-        }
-        */
+        //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Nefertiti_face.obj");
+        m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
+        m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));//调整模型大小
+        //m_Mesh->PrintVertices();
+        m_Mesh->PrintIndices();
+        m_Mesh->PrintHalfEdges();
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
         m_VAO = std::make_unique<VertexArray>();
-        m_VBO = std::make_unique<VertexBuffer>(m_Mesh->mVertices, sizeof(aiVector3D) * m_Mesh->mNumVertices);
+        m_VBO = std::make_unique<VertexBuffer>(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
         VertexBufferLayout layout;
+        layout.Vacate(sizeof(HE::HalfEdge*));//edge
         layout.Push<float>(3);//position
         //layout.Push<float>(3);//normal
         //layout.Push<float>(2);//texCoord
         m_VAO->AddBuffer(*m_VBO, layout);
-        m_IBO = std::make_unique<IndexBuffer>(m_Indices.data(), m_Indices.size());//ATTENTION! argument.2 is count,not size
+        m_IBO = std::make_unique<IndexBuffer>(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         m_Shader = std::make_unique<Shader>("res/shaders/Homework6.shader");
         m_Shader->Bind();
         m_Camera = std::make_unique<Camera>(m_View);
@@ -107,7 +74,7 @@ namespace module {
         glClearColor(0.2f, 0.3f, 0.8f, 1.0f);
         Renderer renderer;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderer.DrawTriangle(*m_VAO, *m_IBO, *m_Shader, m_Indices.size());
+        renderer.DrawTriangle(*m_VAO, *m_IBO, *m_Shader, m_Mesh->m_Indices.size());
     }
 
     void Homework6::OnImguiRender()
