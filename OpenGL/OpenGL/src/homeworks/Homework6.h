@@ -13,6 +13,7 @@
 #include "imgui/imgui.h"
 
 #include <memory>
+#include <unordered_set>
 
 #include "obj-loader/OBJ-Loader.h"
 
@@ -32,6 +33,8 @@ namespace module {
 		void OnImguiRender() override;
 		void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) override;
 		void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) override;
+
+		void MinimalSurfaceLocalMethod(float lambda);
 	private:
 
 		glm::mat4 m_Proj;
@@ -48,6 +51,7 @@ namespace module {
 		std::unique_ptr<HE::Mesh> m_Mesh;
 
 		bool m_WireframeMode;
+		bool m_UpdateMesh;
 
 		ImGuiIO& m_IO;
 	};

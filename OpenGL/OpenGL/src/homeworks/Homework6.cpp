@@ -17,16 +17,19 @@ namespace module {
         m_Model(glm::mat4(1.0f)),
         m_MVP(glm::mat4(1.0f)),
         m_IO(ImGui::GetIO()),
-        m_WireframeMode(false)
+        m_WireframeMode(false),
+        m_UpdateMesh(false)
     {
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Nefertiti_face.obj");
-        m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
+        m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Balls.obj");
+        //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/triangle.obj");
 
         m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));//调整模型大小
-        m_Mesh->PrintVertices();
-        m_Mesh->PrintIndices();
-        m_Mesh->PrintHalfEdges();
+        //m_Mesh->PrintVertices();
+        //m_Mesh->PrintIndices();
+        //m_Mesh->PrintHalfEdges();
+        //m_Mesh->PrintMeanCurvatureVector();
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
@@ -35,7 +38,7 @@ namespace module {
         m_VAO = std::make_unique<VertexArray>();
         m_VBO = std::make_unique<VertexBuffer>(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
         VertexBufferLayout layout;
-        layout.Vacate(sizeof(HE::HalfEdge*));//edge
+        layout.Vacate(sizeof(HE::Vertex::edgeIndex));//edge
         layout.Push<float>(3);//position
         //layout.Push<float>(3);//normal
         //layout.Push<float>(2);//texCoord
@@ -55,6 +58,8 @@ namespace module {
     void Homework6::OnUpdate(double deltaTime)
     {
         m_Camera->CameraUpdate(deltaTime);
+        if (m_UpdateMesh)
+            MinimalSurfaceLocalMethod(0.05);
     }
 
     void Homework6::OnRender()
@@ -76,6 +81,7 @@ namespace module {
         glClearColor(0.2f, 0.3f, 0.8f, 1.0f);
         Renderer renderer;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
         renderer.DrawTriangle(*m_VAO, *m_IBO, *m_Shader, m_Mesh->m_Indices.size());
     }
 
@@ -85,6 +91,8 @@ namespace module {
         ImGui::Text("Press ESC to disable the cursor");
 
         ImGui::Checkbox("Wireframe Mode", &m_WireframeMode);
+
+        ImGui::Checkbox("Update Mesh", &m_UpdateMesh);
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
 
@@ -98,5 +106,20 @@ namespace module {
     void Homework6::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
         Camera::KeyCallback(window, key, scancode, action, mods);
+    }
+
+    void Homework6::MinimalSurfaceLocalMethod(float lambda)
+    {
+        std::vector<glm::vec3> TemporaryPosition;
+        TemporaryPosition.resize(m_Mesh->m_Vertices.size());
+        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
+        {
+            //TemporaryPosition[i] = m_Mesh->m_Vertices[i].position - lambda * m_Mesh->Laplace_Beltrami_Operator(i);
+            TemporaryPosition[i] = m_Mesh->m_Vertices[i].position - lambda * m_Mesh->Laplace_Operator(i);
+        }
+        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
+        {
+            m_Mesh->m_Vertices[i].position = TemporaryPosition[i];
+        }
     }
 }

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <tuple>
+#include <cmath>
 
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
@@ -32,8 +33,8 @@ void Sort(int& a, int& b, int& c)
 
 namespace HE {
 
-	Mesh::Mesh(const std::string& filepath)
-	{
+    Mesh::Mesh(const std::string& filepath)
+    {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(filepath.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
         if (scene)
@@ -166,7 +167,7 @@ namespace HE {
 
             }
             //step4.补齐哈希表1中剩下半边的对边(网格边缘)
-            for (const auto& pair : cache1) 
+            for (const auto& pair : cache1)
             {
                 HE::HalfEdge newEdge;
                 int v0 = std::get<0>(pair.first);
@@ -198,14 +199,20 @@ namespace HE {
 
                     m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
                 }
-                
+
             }
-            
+
             //step5.连接网格边缘的半边
             for (int i = 3 * m_Faces.size(); i < m_Edges.size(); i++)
             {
                 int v = m_Edges[i].vertexIndex;//该半边指向的顶点的index
                 m_Edges[i].nextEdgeIndex = cache2[v];
+            }
+
+            //给顶点添加半边信息,由于边缘的半边在半边列表的末尾，因此边缘点的edge一定是边缘半边，这方便了由一点查找所有半边的操作
+            for (int i = 0; i < m_Edges.size(); i++)
+            {
+                m_Vertices[m_Edges[m_Edges[i].oppositeEdgeIndex].vertexIndex].edgeIndex = i;
             }
 
             //创建初始的索引列表(不属于半边结构，只是用于opengl绘图，在半边结构中处理过的mesh需要调用函数以更新indices)
@@ -216,6 +223,7 @@ namespace HE {
                 m_Indices[i * 3 + 1] = face.mIndices[1];
                 m_Indices[i * 3 + 2] = face.mIndices[2];
             }
+
         }
         importer.FreeScene();
     }
@@ -223,6 +231,94 @@ namespace HE {
     Mesh::~Mesh()
     {
 
+    }
+
+    bool Mesh::IsBoundaryVertex(int vertexIndex)
+    {
+        if (m_Edges[m_Vertices[vertexIndex].edgeIndex].faceIndex == -1)
+            return true;
+        else
+            return false;
+    }
+
+    glm::vec3 Mesh::Laplace_Beltrami_Operator(int vertexIndex)
+    {
+        if (IsBoundaryVertex(vertexIndex))
+            return glm::vec3(0.0f, 0.0f, 0.0f);
+
+        std::vector<glm::vec3> vector;//存vi->vj的向量
+        glm::vec3 vi = m_Vertices[vertexIndex].position;//目标顶点坐标
+        int firstEdgeIndex = m_Vertices[vertexIndex].edgeIndex;//用于比较是否走完了一圈
+        int EdgeIndex = firstEdgeIndex;//一邻域顶点
+
+        vector.push_back(m_Vertices[m_Edges[EdgeIndex].vertexIndex].position - vi);
+        EdgeIndex = m_Edges[m_Edges[EdgeIndex].oppositeEdgeIndex].nextEdgeIndex;//切换到下一条边
+        while (EdgeIndex != firstEdgeIndex)
+        {
+            vector.push_back(m_Vertices[m_Edges[EdgeIndex].vertexIndex].position - vi);
+            EdgeIndex = m_Edges[m_Edges[EdgeIndex].oppositeEdgeIndex].nextEdgeIndex;
+        }
+
+        std::vector<float> angle1;//存储每条边对应的与前一条边相邻的角(弧度制)
+        std::vector<float> angle2;//存储每条边对应的与后一条边相邻的角(弧度制)
+
+        int n = vector.size();
+        glm::vec3 t1 = vector[n - 1] - vector[0];
+        glm::vec3 t2 = vector[1] - vector[0];
+        angle1.push_back(std::acos(glm::dot(vector[0], t1) / (glm::length(vector[0]) * glm::length(t1))));
+        angle2.push_back(std::acos(glm::dot(vector[0], t2) / (glm::length(vector[0]) * glm::length(t2))));
+        for (int i = 1;i <= n - 2;i++)
+        {
+            t1 = vector[i - 1] - vector[i];
+            t2 = vector[i + 1] - vector[i];
+            angle1.push_back(std::acos(glm::dot(vector[i], t1) / (glm::length(vector[i]) * glm::length(t1))));
+            angle2.push_back(std::acos(glm::dot(vector[i], t2) / (glm::length(vector[i]) * glm::length(t2))));
+        }
+        t1 = vector[n - 2] - vector[n - 1];
+        t2 = vector[0] - vector[n - 1];
+        angle1.push_back(std::acos(glm::dot(vector[n - 1], t1) / (glm::length(vector[n - 1]) * glm::length(t1))));
+        angle2.push_back(std::acos(glm::dot(vector[n - 1], t2) / (glm::length(vector[n - 1]) * glm::length(t2))));
+
+        //求Voronoi cell的面积
+        float A = 0.0f;
+        for (int i = 0;i < n;i++)
+        {
+            A += 0.125f * glm::dot(vector[i], vector[i]) * ((1.0f / tan(angle1[i])) + (1.0f / tan(angle2[i])));
+        }
+
+        glm::vec3 Hn = glm::vec3(0.0f, 0.0f, 0.0f);
+        for (int i = 0;i < n;i++)
+        {
+            Hn += -((1.0f / tan(angle1[i])) + (1.0f / tan(angle2[i]))) * vector[i];
+        }
+        Hn *= (0.5f / A);
+        return Hn;
+    }
+
+    glm::vec3 Mesh::Laplace_Operator(int vertexIndex)
+    {
+        if (IsBoundaryVertex(vertexIndex))
+            return glm::vec3(0.0f, 0.0f, 0.0f);
+
+        std::vector<glm::vec3> vector;//存vi->vj的向量
+        glm::vec3 vi = m_Vertices[vertexIndex].position;//目标顶点坐标
+        int firstEdgeIndex = m_Vertices[vertexIndex].edgeIndex;//用于比较是否走完了一圈
+        int EdgeIndex = firstEdgeIndex;//一邻域顶点
+
+        vector.push_back(m_Vertices[m_Edges[EdgeIndex].vertexIndex].position - vi);
+        EdgeIndex = m_Edges[m_Edges[EdgeIndex].oppositeEdgeIndex].nextEdgeIndex;//切换到下一条边
+        while (EdgeIndex != firstEdgeIndex)
+        {
+            vector.push_back(m_Vertices[m_Edges[EdgeIndex].vertexIndex].position - vi);
+            EdgeIndex = m_Edges[m_Edges[EdgeIndex].oppositeEdgeIndex].nextEdgeIndex;
+        }
+
+        glm::vec3 Hn = glm::vec3(0.0f, 0.0f, 0.0f);
+        for (int i = 0;i < vector.size();i++)
+        {
+            Hn -= vector[i];
+        }
+        return Hn;
     }
 
     void Mesh::AdjustTriangleDiretion(int faceIndex)
@@ -257,16 +353,16 @@ namespace HE {
     void Mesh::PrintVertices()
     {
         printf("Vertices' position:\n");
-        for (auto it = m_Vertices.begin(); it != m_Vertices.end(); ++it) 
+        for (auto it = m_Vertices.begin(); it != m_Vertices.end(); ++it)
         {
-            printf("%f,%f,%f\n", it->position.x, it->position.y, it->position.z);
+            printf("edge:%d  position:%f,%f,%f\n", it->edgeIndex, it->position.x, it->position.y, it->position.z);
         }
     }
 
     void Mesh::PrintIndices()
     {
         printf("Indices:\n");
-        for (auto it = m_Indices.begin(); it != m_Indices.end(); it+=3)
+        for (auto it = m_Indices.begin(); it != m_Indices.end(); it += 3)
         {
             printf("%d,%d,%d\n", *it, *(it + 1), *(it + 2));
         }
@@ -283,5 +379,46 @@ namespace HE {
             printf("v:%d->%d  f:%d\n", vStart, vEnd, face);
         }
     }
+
+    void Mesh::PrintMeanCurvatureVector()
+    {
+        for (int i = 0;i < m_Vertices.size();i++)
+        {
+            printf("Mean Curvature Vector");
+            glm::vec3 a = Laplace_Beltrami_Operator(i);
+            printf("v%d : %f,%f,%f\n", i, a.x, a.y, a.z);
+        }
+    }
+    
+
+    glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C)
+    {
+        glm::vec3 MAB = 0.5f * A + 0.5f * B;
+        glm::vec3 MBC = 0.5f * B + 0.5f * C;
+        glm::vec3 vectorAB = B - A;
+        glm::vec3 vectorBC = C - B;
+        glm::vec3 faceNormal = glm::cross(vectorAB, vectorBC);
+        glm::vec3 NAB = glm::normalize(glm::cross(faceNormal, vectorAB));
+        glm::vec3 NBC = glm::normalize(glm::cross(faceNormal, vectorBC));
+
+        float t = NAB.x * NBC.y - NBC.x * NAB.y;
+        float lambda1 = (NBC.y * (MBC.x - MAB.x) - NBC.x * (MBC.y - MAB.y)) / t;
+        //float lambda2 = (NAB.y * (MBC.x - MAB.x) - NAB.x * (MBC.y - MAB.y)) / t;
+
+        glm::vec3 excenter = MAB + lambda1 * NAB;
+        return excenter;
+    }
+
+    float AreaOfTriangle(glm::vec3 A, glm::vec3 B, glm::vec3 C)
+    {
+        float a = sqrtf(pow(B.x - C.x, 2) + pow(B.y - C.y, 2) + pow(B.z - C.z, 2));
+        float b = sqrtf(pow(C.x - A.x, 2) + pow(C.y - A.y, 2) + pow(C.z - A.z, 2));
+        float c = sqrtf(pow(A.x - B.x, 2) + pow(A.y - B.y, 2) + pow(A.z - B.z, 2));
+
+        float p = (a + b + c) / 2.0f;
+        return sqrtf(p * (p - a) * (p - b) * (p - c));
+    }
+
+    
     
 }//namespace HE

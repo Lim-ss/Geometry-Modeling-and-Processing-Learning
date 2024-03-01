@@ -20,7 +20,11 @@ namespace HE {
         void PrintVertices();
         void PrintIndices();
         void PrintHalfEdges();
+        void PrintMeanCurvatureVector();
 
+        bool IsBoundaryVertex(int vertexIndex);
+        glm::vec3 Laplace_Beltrami_Operator(int vertexIndex);
+        glm::vec3 Laplace_Operator(int vertexIndex);
     public:
         std::vector<Vertex> m_Vertices;
         std::vector<HalfEdge> m_Edges;
@@ -45,5 +49,8 @@ namespace HE {
         int edgeIndex;    // 边索引
         // 其他属性
     };
+
+    glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C);
+    float AreaOfTriangle(glm::vec3 A, glm::vec3 B, glm::vec3 C);
 
 }//namespace HE
