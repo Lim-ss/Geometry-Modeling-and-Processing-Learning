@@ -35,6 +35,7 @@ namespace HE {
     struct Vertex {
         int edgeIndex;
         glm::vec3 position;//顶点位置
+        glm::vec3 color;
         //其他属性，如法线、纹理坐标等
     };
 

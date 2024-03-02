@@ -59,6 +59,7 @@ namespace HE {
             for (unsigned int i = 0; i < mesh->mNumVertices; i++)
             {
                 m_Vertices[i].position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+                m_Vertices[i].color = glm::vec3(1.0f, 1.0f, 1.0f);
             }
             //创建面列表
             for (unsigned int i = 0; i < mesh->mNumFaces; i++)

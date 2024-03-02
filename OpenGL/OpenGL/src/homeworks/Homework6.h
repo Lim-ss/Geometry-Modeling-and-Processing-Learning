@@ -35,6 +35,7 @@ namespace module {
 		void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) override;
 
 		void MinimalSurfaceLocalMethod(float lambda);
+		void ShowCurvatureWithColor();
 	private:
 
 		glm::mat4 m_Proj;

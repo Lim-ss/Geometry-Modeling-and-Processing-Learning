@@ -25,7 +25,7 @@ namespace module {
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/triangle.obj");
 
-        m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));//调整模型大小
+        m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));//调整模型大小
         //m_Mesh->PrintVertices();
         //m_Mesh->PrintIndices();
         //m_Mesh->PrintHalfEdges();
@@ -40,6 +40,7 @@ namespace module {
         VertexBufferLayout layout;
         layout.Vacate(sizeof(HE::Vertex::edgeIndex));//edge
         layout.Push<float>(3);//position
+        layout.Push<float>(3);//color
         //layout.Push<float>(3);//normal
         //layout.Push<float>(2);//texCoord
         m_VAO->AddBuffer(*m_VBO, layout);
@@ -60,6 +61,7 @@ namespace module {
         m_Camera->CameraUpdate(deltaTime);
         if (m_UpdateMesh)
             MinimalSurfaceLocalMethod(0.05);
+        ShowCurvatureWithColor();
     }
 
     void Homework6::OnRender()
@@ -120,6 +122,18 @@ namespace module {
         for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
         {
             m_Mesh->m_Vertices[i].position = TemporaryPosition[i];
+        }
+    }
+
+    void Homework6::ShowCurvatureWithColor()
+    {
+        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
+        {
+            float t = glm::length(m_Mesh->Laplace_Operator(i));//平均曲率的模
+            glm::vec3 white = glm::vec3(1.0f, 1.0f, 1.0f);
+            glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
+            float ratio = (t / 0.2f > 1.0f ? 1.0f : t / 0.2f);
+            m_Mesh->m_Vertices[i].color = ratio * red + (1.0f - ratio) * white;
         }
     }
 }
