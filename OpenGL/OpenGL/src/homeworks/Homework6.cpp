@@ -18,14 +18,14 @@ namespace module {
         m_MVP(glm::mat4(1.0f)),
         m_IO(ImGui::GetIO()),
         m_WireframeMode(false),
-        m_UpdateMesh(false)
+        m_UpdateMesh(false),
+        m_scale(0.0f)
     {
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Nefertiti_face.obj");
         m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Balls.obj");
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/simpleCube.obj");
         //m_Mesh = std::make_unique<HE::Mesh>("res/mesh/triangle.obj");
 
-        m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));//调整模型大小
         //m_Mesh->PrintVertices();
         //m_Mesh->PrintIndices();
         //m_Mesh->PrintHalfEdges();
@@ -62,6 +62,7 @@ namespace module {
         if (m_UpdateMesh)
             MinimalSurfaceLocalMethod(0.05);
         ShowCurvatureWithColor();
+        m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(pow(10.0f, m_scale)));//调整模型大小
     }
 
     void Homework6::OnRender()
@@ -84,6 +85,7 @@ namespace module {
         Renderer renderer;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+        m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         renderer.DrawTriangle(*m_VAO, *m_IBO, *m_Shader, m_Mesh->m_Indices.size());
     }
 
@@ -92,9 +94,27 @@ namespace module {
 
         ImGui::Text("Press ESC to disable the cursor");
 
+        ImGui::SliderFloat("model scale", &m_scale, -2.0f, 2.0f);
+
         ImGui::Checkbox("Wireframe Mode", &m_WireframeMode);
 
         ImGui::Checkbox("Update Mesh", &m_UpdateMesh);
+
+        if (ImGui::Button("load model 1"))
+        {
+            m_Mesh->Reload("res/mesh/Nefertiti_face.obj");
+            ShowCurvatureWithColor();
+        }
+        if (ImGui::Button("load model 2"))
+        {
+            m_Mesh->Reload("res/mesh/Balls.obj");
+            ShowCurvatureWithColor();
+        }
+        if (ImGui::Button("load model 3"))
+        {
+            m_Mesh->Reload("res/mesh/Bunny_head.obj");
+            ShowCurvatureWithColor();
+        }
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
 
@@ -129,10 +149,10 @@ namespace module {
     {
         for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
         {
-            float t = glm::length(m_Mesh->Laplace_Operator(i));//平均曲率的模
+            float t = pow(10.0f, m_scale) * glm::length(m_Mesh->Laplace_Operator(i));//平均曲率的模
             glm::vec3 white = glm::vec3(1.0f, 1.0f, 1.0f);
             glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
-            float ratio = (t / 0.2f > 1.0f ? 1.0f : t / 0.2f);
+            float ratio = (t / 0.01f > 1.0f ? 1.0f : t / 0.01f);
             m_Mesh->m_Vertices[i].color = ratio * red + (1.0f - ratio) * white;
         }
     }

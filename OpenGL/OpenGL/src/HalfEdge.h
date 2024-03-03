@@ -16,6 +16,7 @@ namespace HE {
     public:
         Mesh(const std::string& filepath);
         ~Mesh();
+        void Reload(const std::string& filepath);
         void AdjustTriangleDiretion(int faceIndex);
         void PrintVertices();
         void PrintIndices();

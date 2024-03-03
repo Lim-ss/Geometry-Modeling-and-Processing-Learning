@@ -35,6 +35,16 @@ namespace HE {
 
     Mesh::Mesh(const std::string& filepath)
     {
+        Reload(filepath);
+    }
+
+    Mesh::~Mesh()
+    {
+
+    }
+
+    void Mesh::Reload(const std::string& filepath)
+    {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(filepath.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
         if (scene)
@@ -229,11 +239,6 @@ namespace HE {
         importer.FreeScene();
     }
 
-    Mesh::~Mesh()
-    {
-
-    }
-
     bool Mesh::IsBoundaryVertex(int vertexIndex)
     {
         if (m_Edges[m_Vertices[vertexIndex].edgeIndex].faceIndex == -1)
@@ -250,7 +255,7 @@ namespace HE {
         std::vector<glm::vec3> vector;//存vi->vj的向量
         glm::vec3 vi = m_Vertices[vertexIndex].position;//目标顶点坐标
         int firstEdgeIndex = m_Vertices[vertexIndex].edgeIndex;//用于比较是否走完了一圈
-        int EdgeIndex = firstEdgeIndex;//一邻域顶点
+        int EdgeIndex = firstEdgeIndex;//出边
 
         vector.push_back(m_Vertices[m_Edges[EdgeIndex].vertexIndex].position - vi);
         EdgeIndex = m_Edges[m_Edges[EdgeIndex].oppositeEdgeIndex].nextEdgeIndex;//切换到下一条边

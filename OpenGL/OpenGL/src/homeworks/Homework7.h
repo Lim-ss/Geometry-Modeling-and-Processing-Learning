@@ -17,16 +17,13 @@
 
 #include "obj-loader/OBJ-Loader.h"
 
-
-
-
 namespace module {
 
-	class Homework6 : public Module
+	class Homework7 : public Module
 	{
 	public:
-		Homework6();
-		~Homework6();
+		Homework7();
+		~Homework7();
 
 		void OnUpdate(double deltaTime) override;
 		void OnRender() override;
@@ -34,7 +31,9 @@ namespace module {
 		void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) override;
 		void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) override;
 
-		void MinimalSurfaceLocalMethod(float lambda);
+		void MinimalSurfaceGrobalMethod();
+		void MinimalSurfaceGrobalMethodCot();
+		void parameterization();
 		void ShowCurvatureWithColor();
 	private:
 
@@ -52,7 +51,7 @@ namespace module {
 		std::unique_ptr<HE::Mesh> m_Mesh;
 
 		bool m_WireframeMode;
-		bool m_UpdateMesh;
+
 		float m_scale;
 
 		ImGuiIO& m_IO;
