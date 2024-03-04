@@ -36,8 +36,8 @@ namespace module {
         layout.Vacate(sizeof(HE::Vertex::edgeIndex));//edge
         layout.Push<float>(3);//position
         layout.Push<float>(3);//color
-        //layout.Push<float>(3);//normal
-        //layout.Push<float>(2);//texCoord
+        layout.Push<float>(3);//normal
+        layout.Push<float>(2);//texCoord
         m_VAO->AddBuffer(*m_VBO, layout);
         m_IBO = std::make_unique<IndexBuffer>(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         m_Shader = std::make_unique<Shader>("res/shaders/Homework6.shader");

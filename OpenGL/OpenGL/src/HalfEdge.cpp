@@ -386,6 +386,19 @@ namespace HE {
         }
     }
 
+    void Mesh::PrintFaces()
+    {
+        printf("Faces:\n");
+        for (int i = 0;i < m_Faces.size();i++)
+        {
+            int v1 = m_Edges[m_Faces[i].edgeIndex].vertexIndex;
+            int v2 = m_Edges[m_Edges[m_Faces[i].edgeIndex].nextEdgeIndex].vertexIndex;
+            int v3 = m_Edges[m_Edges[m_Edges[m_Faces[i].edgeIndex].nextEdgeIndex].nextEdgeIndex].vertexIndex;
+            glm::vec3 normal = NormalOfFace(i);
+            printf("face%d: indice(%d,%d,%d)  normal(%f,%f,%f)  \n", i, v1, v2, v3, normal.x, normal.y, normal.z);
+        }
+    }
+
     void Mesh::PrintMeanCurvatureVector()
     {
         for (int i = 0;i < m_Vertices.size();i++)
@@ -425,6 +438,179 @@ namespace HE {
         return sqrtf(p * (p - a) * (p - b) * (p - c));
     }
 
+    void Mesh::UpdateIndices()
+    {
+        m_Indices.clear();
+        m_Indices.reserve(m_Faces.size() * 3);
+        for (auto& face : m_Faces)
+        {
+            m_Indices.push_back(m_Edges[face.edgeIndex].vertexIndex);
+            m_Indices.push_back(m_Edges[m_Edges[face.edgeIndex].nextEdgeIndex].vertexIndex);
+            m_Indices.push_back(m_Edges[m_Edges[m_Edges[face.edgeIndex].nextEdgeIndex].nextEdgeIndex].vertexIndex);
+        }
+    }
+
+    void Mesh::UpdateNormals()
+    {
+        for (int i = 0;i < m_Vertices.size();i++)
+        {
+            int start = m_Vertices[i].edgeIndex;
+            glm::vec3 averageNormal = NormalOfFace(m_Edges[start].faceIndex);
+            int t = m_Edges[m_Edges[start].oppositeEdgeIndex].nextEdgeIndex;
+            while (t != start)
+            {
+                averageNormal += NormalOfFace(m_Edges[t].faceIndex);
+                t = m_Edges[m_Edges[t].oppositeEdgeIndex].nextEdgeIndex;
+            }
+            m_Vertices[i].normal = glm::normalize(averageNormal);
+        }
+    }
     
-    
+    void Mesh::DeleteFace(int faceIndex)
+    {
+        int e1 = m_Faces[faceIndex].edgeIndex;
+        int e2 = m_Edges[m_Faces[faceIndex].edgeIndex].nextEdgeIndex;
+        int e3 = m_Edges[m_Edges[m_Faces[faceIndex].edgeIndex].nextEdgeIndex].nextEdgeIndex;
+
+        //bi表示ei对应的边是否为边界
+        bool b1 = (m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex == -1);
+        bool b2 = (m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex == -1);
+        bool b3 = (m_Edges[m_Edges[e3].oppositeEdgeIndex].faceIndex == -1);
+        if (!b1 && !b2 && !b3)
+        {
+            //内部三角形
+            m_Edges[e1].faceIndex = -1;
+            m_Edges[e2].faceIndex = -1;
+            m_Edges[e3].faceIndex = -1;
+        }
+        else if (b1 && !b2 && !b3)
+        {
+            //有一条边在边缘
+            int t = PrecursorEdge(e1);
+            m_Edges[t].nextEdgeIndex = e2;
+            m_Edges[e3].nextEdgeIndex = m_Edges[e1].nextEdgeIndex;
+            m_Edges[e2].faceIndex = -1;
+            m_Edges[e3].faceIndex = -1;
+        }
+
+    }
+
+    void Mesh::DeleteVertex(int vertexIndex)
+    {
+
+    }
+
+    void Mesh::EraseVertex(int vertexIndex)
+    {
+        if (vertexIndex == m_Vertices.size() - 1)
+        {
+            m_Vertices.pop_back();
+            return;
+        }
+        //否则需要与末尾元素进行交换，并修改与原本末尾元素相关的索引（只有相邻的边或面受影响）
+        int oldIndex = m_Vertices.size() - 1;
+        int newIndex = vertexIndex;
+        int t = m_Edges[m_Vertices[oldIndex].edgeIndex].oppositeEdgeIndex;
+        while (1)
+        {
+            m_Edges[t].vertexIndex = newIndex;
+            t = m_Edges[t].nextEdgeIndex;
+            if (t == m_Vertices[oldIndex].edgeIndex)
+                break;
+            t = m_Edges[t].oppositeEdgeIndex;
+        }
+        m_Vertices[newIndex] = m_Vertices[oldIndex];
+        m_Vertices.pop_back();
+        return;
+
+    }
+
+    void Mesh::EraseFace(int faceIndex)
+    {
+        if (faceIndex == m_Faces.size() - 1)
+        {
+            m_Faces.pop_back();
+            return;
+        }
+        //否则需要与末尾元素进行交换，并修改与原本末尾元素相关的索引（只有相邻的边或面受影响）
+        int oldIndex = m_Faces.size() - 1;
+        int newIndex = faceIndex;
+
+        int t = m_Faces[oldIndex].edgeIndex;
+        m_Edges[t].faceIndex = newIndex;
+        t = m_Edges[t].nextEdgeIndex;
+        m_Edges[t].faceIndex = newIndex;
+        t = m_Edges[t].nextEdgeIndex;
+        m_Edges[t].faceIndex = newIndex;
+
+        m_Faces[newIndex] = m_Faces[oldIndex];
+        m_Faces.pop_back();
+        return;
+    }
+
+    void Mesh::EraseEdge(int edgeIndex)
+    {
+        if (edgeIndex == m_Edges.size() - 1)
+        {
+            m_Edges.pop_back();
+            return;
+        }
+        //否则需要与末尾元素进行交换，并修改与原本末尾元素相关的索引（只有相邻的边或面受影响）
+        int oldIndex = m_Edges.size() - 1;
+        int newIndex = edgeIndex;
+
+        if (m_Edges[oldIndex].faceIndex != -1)
+        {
+            //内部边
+            m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].oppositeEdgeIndex = newIndex;
+            m_Edges[m_Edges[m_Edges[oldIndex].nextEdgeIndex].nextEdgeIndex].nextEdgeIndex = newIndex;
+            if (m_Faces[m_Edges[oldIndex].faceIndex].edgeIndex == oldIndex)
+                m_Faces[m_Edges[oldIndex].faceIndex].edgeIndex = newIndex;
+            if (m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex == oldIndex)
+                m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex = newIndex;
+        }
+        else
+        {
+            //外部边
+            m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].oppositeEdgeIndex = newIndex;
+            m_Edges[PrecursorEdge(oldIndex)].nextEdgeIndex = newIndex;
+            m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex = newIndex;
+        }
+        m_Edges[newIndex] = m_Edges[oldIndex];
+        m_Edges.pop_back();
+        return;
+    }
+
+    int Mesh::PrecursorEdge(int edgeIndex)
+    {
+        //返回该半边的直接前驱
+        if (m_Edges[edgeIndex].faceIndex != -1)
+        {
+            //内部边直接沿着三角形转一圈效率更高
+            return m_Edges[m_Edges[edgeIndex].nextEdgeIndex].nextEdgeIndex;
+        }
+        //否则为外部边，只能沿着顶点转一圈
+        int t = edgeIndex;
+        while (m_Edges[m_Edges[t].oppositeEdgeIndex].nextEdgeIndex != edgeIndex)
+        {
+            t = m_Edges[m_Edges[t].oppositeEdgeIndex].nextEdgeIndex;
+        }
+        return m_Edges[t].oppositeEdgeIndex;
+    }
+
+    glm::vec3 Mesh::NormalOfFace(int faceIndex)
+    {
+        if (faceIndex == -1)
+            return glm::vec3(0, 0, 0);
+        int e1 = m_Faces[faceIndex].edgeIndex;
+        int e2 = m_Edges[e1].nextEdgeIndex;
+        int e3 = m_Edges[e2].nextEdgeIndex;
+        glm::vec3 v1 = m_Vertices[m_Edges[e1].vertexIndex].position;
+        glm::vec3 v2 = m_Vertices[m_Edges[e2].vertexIndex].position;
+        glm::vec3 v3 = m_Vertices[m_Edges[e3].vertexIndex].position;
+
+        glm::vec3 vector1 = v1 - v2;
+        glm::vec3 vector2 = v3 - v1;
+        return glm::normalize(glm::cross(vector1, vector2));
+    }
 }//namespace HE

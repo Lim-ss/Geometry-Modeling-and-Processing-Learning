@@ -21,11 +21,23 @@ namespace HE {
         void PrintVertices();
         void PrintIndices();
         void PrintHalfEdges();
+        void PrintFaces();
         void PrintMeanCurvatureVector();
+        void UpdateIndices();
+        void UpdateNormals();
 
         bool IsBoundaryVertex(int vertexIndex);
         glm::vec3 Laplace_Beltrami_Operator(int vertexIndex);
         glm::vec3 Laplace_Operator(int vertexIndex);
+        int PrecursorEdge(int edgeIndex);
+        glm::vec3 NormalOfFace(int faceIndex);
+
+        void DeleteFace(int faceIndex);
+        void DeleteVertex(int vertexIndex);
+        void EraseFace(int faceIndex);
+        void EraseVertex(int vertexIndex);
+        void EraseEdge(int edgeIndex);
+
     public:
         std::vector<Vertex> m_Vertices;
         std::vector<HalfEdge> m_Edges;
@@ -37,7 +49,8 @@ namespace HE {
         int edgeIndex;
         glm::vec3 position;//顶点位置
         glm::vec3 color;
-        //其他属性，如法线、纹理坐标等
+        glm::vec3 normal;
+        glm::vec2 texCoord;
     };
 
     struct HalfEdge {

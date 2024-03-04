@@ -18,11 +18,11 @@ public:
 	static float yaw;
 	static float pitch;
 	static bool CursorDisabled;
+	glm::vec3 m_cameraPos;
 
 	float fov;
 private:
 
-	glm::vec3 m_cameraPos;
 	glm::vec3 m_cameraFront;
 	glm::vec3 m_cameraUp;
 	glm::mat4& m_View;

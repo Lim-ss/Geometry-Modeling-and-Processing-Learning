@@ -87,6 +87,12 @@
     <ClCompile Include="src\homeworks\Homework6.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\Homework7.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\homeworks\Homework9.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -537,6 +543,7 @@
     <None Include="src\vendor\Eigen\SVD" />
     <None Include="src\vendor\Eigen\UmfPackSupport" />
     <None Include="res\shaders\Homework6.shader" />
+    <None Include="res\shaders\Homework9.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Renderer.h">
@@ -2397,6 +2404,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HashForTuple.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\Homework7.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\Homework9.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
