@@ -1,6 +1,10 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <GLFW/glfw3native.h>
+#define WINVER 0x0500
+#include <windows.h>
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -41,11 +45,22 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     }
 }
 
-void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) 
+{
     ImGuiIO& io = ImGui::GetIO();
     if (!io.WantCaptureMouse)
     {
         currentModule->MouseButtonCallback(window, button, action, mods);
+    }
+}
+
+void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) 
+{
+    
+    ImGuiIO& io = ImGui::GetIO();
+    if (!io.WantCaptureMouse)
+    {
+        currentModule->ScrollCallback(window, xoffset, yoffset);
     }
 }
 
@@ -73,6 +88,7 @@ int main(void)
     glfwSetKeyCallback(window, KeyCallback);
     glfwSetCursorPosCallback(window, CursorPosCallback);
     glfwSetMouseButtonCallback(window, MouseButtonCallback);
+    glfwSetScrollCallback(window, ScrollCallback);
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);

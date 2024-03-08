@@ -34,9 +34,12 @@ in vec3 v_normal;
 uniform vec3 u_LightPosition;
 uniform vec3 u_LightColor;
 uniform vec3 u_ViewPosition;
+uniform int u_Mode;
 
 void main()
 {
+    if(u_Mode == 0)//光照
+    {
     vec3 normal = normalize(v_normal);
     vec3 lightDiretion = normalize(u_LightPosition - v_position);
 
@@ -45,14 +48,27 @@ void main()
     vec3 ambient = ambientStrength * u_LightColor;
 
     float diff = max(dot(normal, lightDiretion), 0.0);
-    vec3 diffuse = diff * u_LightColor;
+    vec3 diffuse = 0.3* diff * u_LightColor;
 
     float specularStrength = 0.5;
     vec3 viewDiretion = normalize(u_ViewPosition - v_position);
     vec3 reflectDiretion = reflect(-lightDiretion, normal);
-    float spec = pow(max(dot(viewDiretion, reflectDiretion), 0.0), 32);
+    float spec = pow(max(dot(viewDiretion, reflectDiretion), 0.0), 16);
     vec3 specular = specularStrength * spec * u_LightColor;
 
     vec3 result = (ambient + diffuse + specular) * v_color;
     f_color = vec4(result, 1.0);
+    }
+    else if(u_Mode == 1)//全白
+    {
+        f_color = vec4(1.0f, 1.0f, 1.0f, 1.0);
+    }
+    else if(u_Mode == 2)//全黑
+    {
+        f_color = vec4(0.0f, 0.0f, 0.0f, 1.0);
+    }
+    else if(u_Mode == 3)//纯色
+    {
+        f_color = vec4(v_color, 1.0);
+    }
 };

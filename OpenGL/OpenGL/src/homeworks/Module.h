@@ -22,6 +22,7 @@ namespace module {
 		virtual void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {}
 		virtual void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {}
 		virtual void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {}
+		virtual void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {}
 	};
 
 	class ModuleMenu : public Module

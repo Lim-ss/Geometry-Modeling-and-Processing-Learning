@@ -6,12 +6,12 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace HE {
+namespace HE2 {
     struct Vertex;
     struct HalfEdge;
     struct Face;
 
-    class Mesh 
+    class Mesh
     {
     public:
         Mesh(const std::string& filepath);
@@ -69,4 +69,4 @@ namespace HE {
     glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C);
     float AreaOfTriangle(glm::vec3 A, glm::vec3 B, glm::vec3 C);
 
-}//namespace HE
+}//namespace HE2

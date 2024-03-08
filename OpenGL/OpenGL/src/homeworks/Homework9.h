@@ -30,6 +30,8 @@ namespace module {
 		void OnImguiRender() override;
 		void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) override;
 		void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) override;
+		void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) override;
+		void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) override;
 
 	private:
 

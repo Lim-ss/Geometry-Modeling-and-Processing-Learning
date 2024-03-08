@@ -1,4 +1,4 @@
-#include "HalfEdge.h"
+#include "HalfEdge2.h"
 
 #include <iostream>
 #include <unordered_map>
@@ -32,7 +32,7 @@ static void Sort(int& a, int& b, int& c)
     return;
 }
 
-namespace HE {
+namespace HE2 {
 
     Mesh::Mesh(const std::string& filepath)
     {
@@ -181,7 +181,7 @@ namespace HE {
             //step4.²¹Æë¹þÏ£±í1ÖÐÊ£ÏÂ°ë±ßµÄ¶Ô±ß(Íø¸ñ±ßÔµ)
             for (const auto& pair : cache1)
             {
-                HE::HalfEdge newEdge;
+                HE2::HalfEdge newEdge;
                 int v0 = std::get<0>(pair.first);
                 int v1 = std::get<1>(pair.first);
                 int e = pair.second;
@@ -362,7 +362,7 @@ namespace HE {
         printf("Vertices' position:\n");
         for (int i = 0;i < m_Vertices.size();i++)
         {
-            printf("v%d  ->e:%d  position:%f,%f,%f\n",i, m_Vertices[i].edgeIndex, m_Vertices[i].position.x, m_Vertices[i].position.y, m_Vertices[i].position.z);
+            printf("v%d  ->e:%d  position:%f,%f,%f\n", i, m_Vertices[i].edgeIndex, m_Vertices[i].position.x, m_Vertices[i].position.y, m_Vertices[i].position.z);
         }
     }
 
@@ -409,7 +409,7 @@ namespace HE {
             printf("v%d : %f,%f,%f\n", i, a.x, a.y, a.z);
         }
     }
-    
+
 
     glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C)
     {
@@ -476,7 +476,7 @@ namespace HE {
             m_Vertices[i].normal = glm::normalize(averageNormal);
         }
     }
-    
+
     void Mesh::DeleteFace(int faceIndex)
     {
         int e1 = m_Faces[faceIndex].edgeIndex;
@@ -908,7 +908,7 @@ namespace HE {
             int e8 = m_Edges[e2].oppositeEdgeIndex;
             int e9 = m_Edges[e6].oppositeEdgeIndex;
             int e10 = m_Edges[e5].oppositeEdgeIndex;
-            
+
             int v1 = m_Edges[e1].vertexIndex;
             int v2 = m_Edges[e4].vertexIndex;
             int v3 = m_Edges[e2].vertexIndex;
@@ -1136,4 +1136,4 @@ namespace HE {
         }
         return num;
     }
-}//namespace HE
+}//namespace HE2

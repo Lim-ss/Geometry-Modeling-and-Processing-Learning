@@ -93,6 +93,9 @@
     <ClCompile Include="src\homeworks\Homework9.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\HalfEdge2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -2410,6 +2413,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\homeworks\Homework9.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\HalfEdge2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
