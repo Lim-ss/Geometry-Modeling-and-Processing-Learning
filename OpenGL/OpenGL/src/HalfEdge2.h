@@ -6,6 +6,9 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "Eigen/Core"
+#include "Eigen/Geometry"
+
 namespace HE2 {
     struct Vertex;
     struct HalfEdge;
@@ -23,6 +26,8 @@ namespace HE2 {
         void PrintHalfEdges();
         void PrintFaces();
         void PrintMeanCurvatureVector();
+        void PrintQEM();
+        void PrintQuadricError();
         void UpdateIndices();
         void UpdateNormals();
 
@@ -39,6 +44,7 @@ namespace HE2 {
         void EraseVertex(int vertexIndex);
         void EraseEdge(int edgeIndex);
         int EdgeContract(int edgeIndex);
+        bool EdgeContractable(int edgeIndex);
 
     public:
         std::vector<Vertex> m_Vertices;
@@ -53,6 +59,7 @@ namespace HE2 {
         glm::vec3 color;
         glm::vec3 normal;
         glm::vec2 texCoord;
+        Eigen::Matrix4f QuadricErrorMetrix;
     };
 
     struct HalfEdge {
@@ -60,6 +67,8 @@ namespace HE2 {
         int faceIndex;
         int oppositeEdgeIndex;  // 对向边
         int nextEdgeIndex;      // 下一条边
+        float QuadricError;
+        glm::vec3 bestPosition;
     };
 
     struct Face {

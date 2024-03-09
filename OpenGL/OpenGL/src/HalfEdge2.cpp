@@ -458,12 +458,10 @@ namespace HE2 {
             int start = m_Vertices[i].edgeIndex;
             if (start >= (int)m_Edges.size())
             {
-                //printf("UpdateNormals() : invalid edgeIndex,%d >= %d\n", start, m_Edges.size());
                 continue;
             }
             if (m_Edges[start].faceIndex >= (int)m_Faces.size())
             {
-                //printf("UpdateNormals() : invalid faceIndex,%d >= %d\n", m_Edges[start].faceIndex, m_Faces.size());
                 continue;
             }
             glm::vec3 averageNormal = NormalOfFace(m_Edges[start].faceIndex);
@@ -833,8 +831,12 @@ namespace HE2 {
             m_Edges[m_Edges[m_Edges[oldIndex].nextEdgeIndex].nextEdgeIndex].nextEdgeIndex = newIndex;
             if (m_Faces[m_Edges[oldIndex].faceIndex].edgeIndex == oldIndex)
                 m_Faces[m_Edges[oldIndex].faceIndex].edgeIndex = newIndex;
-            if (m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex == oldIndex)
-                m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex = newIndex;
+            //按理来说如果erase之前已经处理好了未失效元素的拓扑关系，这里应该不需要判断-1，但是有时候确实发生了，目前还没有找到该bug的原因，只能先这样处理
+            if (m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex != -1)
+            {
+                if (m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex == oldIndex)
+                    m_Vertices[m_Edges[m_Edges[oldIndex].oppositeEdgeIndex].vertexIndex].edgeIndex = newIndex;
+            }
         }
         else
         {
@@ -918,10 +920,6 @@ namespace HE2 {
             {
                 return -1;//无法边塌缩
             }
-
-            glm::vec3 mid = 0.5f * m_Vertices[v1].position + 0.5f * m_Vertices[v2].position;
-            m_Vertices[v1].position = mid;
-            m_Vertices[v2].position = mid;
 
             if (IsBoundaryVertex(v1))//防止边界点的默认边不是边界边
             {
@@ -1076,6 +1074,7 @@ namespace HE2 {
                     t = m_Edges[m_Edges[t].nextEdgeIndex].oppositeEdgeIndex;
                 }
             }
+            m_Vertices[v1].edgeIndex = e6;
 
             //这个操作不能在合并顶点之前
             m_Edges[e7].oppositeEdgeIndex = e8;
@@ -1123,6 +1122,48 @@ namespace HE2 {
         return 1;
     }
 
+    bool Mesh::EdgeContractable(int edgeIndex)
+    {
+        int f1 = m_Edges[edgeIndex].faceIndex;
+        int f2 = m_Edges[m_Edges[edgeIndex].oppositeEdgeIndex].faceIndex;
+        if (f1 != -1 && f2 != -1)
+        {
+            //内部边
+            int e1 = edgeIndex;
+            int e2 = m_Edges[e1].nextEdgeIndex;
+            int e4 = m_Edges[e1].oppositeEdgeIndex;
+            int e5 = m_Edges[e4].nextEdgeIndex;
+            int v3 = m_Edges[e2].vertexIndex;
+            int v4 = m_Edges[e5].vertexIndex;
+            if (Degree(v3) == 3 || Degree(v4) == 3)
+            {
+                return false;//无法边塌缩
+            }
+        }
+        else if ((f1 != -1 && f2 == -1) || (f1 == -1 && f2 != -1))
+        {
+            //边界边
+            int e1;
+            if (f1 != -1)
+                e1 = edgeIndex;
+            else
+                e1 = m_Edges[edgeIndex].oppositeEdgeIndex;
+
+            int e2 = m_Edges[e1].nextEdgeIndex;
+            int v3 = m_Edges[e2].vertexIndex;
+            if (Degree(v3) == 3)
+            {
+                return false;//无法边塌缩
+            }
+        }
+        else//(f1 == -1 && f2 == -1)
+        {
+            //不存在这种情况
+            return false;
+        }
+        return true;
+    }
+
     int Mesh::Degree(int vertexIndex)
     {
         //求顶点的度
@@ -1135,5 +1176,31 @@ namespace HE2 {
             e = m_Edges[m_Edges[e].oppositeEdgeIndex].nextEdgeIndex;
         }
         return num;
+    }
+
+    void Mesh::PrintQEM()
+    {
+        printf("print QEM:\n");
+        for (int i = 0;i < m_Vertices.size();i++)
+        {
+            Eigen::Matrix4f& m = m_Vertices[i].QuadricErrorMetrix;
+            printf("v%d:\n", i);
+            printf("%.2f\t%.2f\t%.2f\t%.2f\n", m.coeff(0, 0), m.coeff(0, 1), m.coeff(0, 2), m.coeff(0, 3));
+            printf("%.2f\t%.2f\t%.2f\t%.2f\n", m.coeff(1, 0), m.coeff(1, 1), m.coeff(1, 2), m.coeff(1, 3));
+            printf("%.2f\t%.2f\t%.2f\t%.2f\n", m.coeff(2, 0), m.coeff(2, 1), m.coeff(2, 2), m.coeff(2, 3));
+            printf("%.2f\t%.2f\t%.2f\t%.2f\n", m.coeff(3, 0), m.coeff(3, 1), m.coeff(3, 2), m.coeff(3, 3));
+        }
+
+    }
+
+    void Mesh::PrintQuadricError()
+    {
+        printf("print Quadric Error:\n");
+        for (int i = 0;i < m_Edges.size();i++)
+        {
+            int v1 = m_Edges[m_Edges[i].oppositeEdgeIndex].vertexIndex;
+            int v2 = m_Edges[i].vertexIndex;
+            printf("e:%d (%d->%d)  error:%f   bestPos:(%.2f,%.2f,%.2f)\n", i, v1, v2, m_Edges[i].QuadricError, m_Edges[i].bestPosition.x, m_Edges[i].bestPosition.y, m_Edges[i].bestPosition.z);
+        }
     }
 }//namespace HE2

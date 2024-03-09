@@ -10,7 +10,8 @@
 
 #include "Eigen/Core"
 #include "Eigen/Geometry"
-#include "Eigen/Sparse"
+#include "Eigen/Dense"
+
 
 namespace module {
 
@@ -24,20 +25,21 @@ namespace module {
         m_WireframeMode(false),
         m_scale(0.0f)
     {
-        m_Mesh = std::make_unique<HE::Mesh>("res/mesh/Nefertiti_face.obj");
+        m_Mesh = std::make_unique<HE2::Mesh>("res/mesh/Nefertiti_face.obj");
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
         m_VAO = std::make_unique<VertexArray>();
-        m_VBO = std::make_unique<VertexBuffer>(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+        m_VBO = std::make_unique<VertexBuffer>(m_Mesh->m_Vertices.data(), sizeof(HE2::Vertex) * m_Mesh->m_Vertices.size());
         VertexBufferLayout layout;
-        layout.Vacate(sizeof(HE::Vertex::edgeIndex));//edge
+        layout.Vacate(sizeof(HE2::Vertex::edgeIndex));//edge
         layout.Push<float>(3);//position
         layout.Push<float>(3);//color
         layout.Push<float>(3);//normal
         layout.Push<float>(2);//texCoord
+        layout.Vacate(sizeof(Eigen::Matrix4f));//QuadricErrorMetrix;
         m_VAO->AddBuffer(*m_VBO, layout);
         m_IBO = std::make_unique<IndexBuffer>(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         m_Shader = std::make_unique<Shader>("res/shaders/Homework9.shader");
@@ -47,10 +49,7 @@ namespace module {
         glEnable(GL_POLYGON_OFFSET_FILL); // 启用填充面的多边形偏移
         glPolygonOffset(0.5f, 0.1f); // 设置多边形偏移因子和单位
 
-        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
-        {
-            printf("v%d:%d\n", i, m_Mesh->Degree(i));
-        }
+        InitQEM();
     }
 
     Homework9::~Homework9()
@@ -95,7 +94,7 @@ namespace module {
 
         m_Mesh->UpdateIndices();
         //m_Mesh->UpdateNormals();
-        m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+        m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE2::Vertex) * m_Mesh->m_Vertices.size());
         m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -115,11 +114,11 @@ namespace module {
 
         ImGui::SliderFloat("model scale", &m_scale, -2.0f, 2.0f);
 
-        ImGui::InputText("index", m_input, IM_ARRAYSIZE(m_input));
+        ImGui::InputText("index", m_input1, IM_ARRAYSIZE(m_input1));
         // 在ImGui中创建按钮，用于确定坐标
         if (ImGui::Button("highlight vertex"))
         {
-            int index = atoi(m_input);
+            int index = atoi(m_input1);
             if (index < m_Mesh->m_Vertices.size())
             {
                 printf("highlight vertex:%d\n", index);
@@ -136,7 +135,7 @@ namespace module {
         }
         if (ImGui::Button("delete face"))
         {
-            int index = atoi(m_input);
+            int index = atoi(m_input1);
             if (index < m_Mesh->m_Faces.size())
             {
                 printf("delete face:%d\n", index);
@@ -145,7 +144,7 @@ namespace module {
         }
         if (ImGui::Button("delete face"))
         {
-            int index = atoi(m_input);
+            int index = atoi(m_input1);
             if (index < m_Mesh->m_Faces.size())
             {
                 printf("delete face:%d\n", index);
@@ -154,7 +153,7 @@ namespace module {
         }
         if (ImGui::Button("edge contract"))
         {
-            int index = atoi(m_input);
+            int index = atoi(m_input1);
             if (index < m_Mesh->m_Edges.size())
             {
                 if (m_Mesh->EdgeContract(index) == 1)
@@ -180,8 +179,60 @@ namespace module {
         {
             m_Mesh->PrintFaces();
         }
+        if (ImGui::Button("print QEM"))
+        {
+            m_Mesh->PrintQEM();
+        }
+        if (ImGui::Button("print error"))
+        {
+            m_Mesh->PrintQuadricError();
+        }
+        if (ImGui::Button("calculate error"))
+        {
+            printf("calculate error\n");
+            CalculateQuadricError();
+        }
+        if (ImGui::Button("mesh simplify"))
+        {
+            int t = atoi(m_input2);
+            printf("mesh simplifying ... \nwait ...\n");
+            int schedule = 0;
+            std::cout << "\033[32m"; // 设置文本颜色为绿色
+            printf("[>         ]0%%\n");//0%-10%
+            for (int i = 0;i < t;i++)
+            {
+                CalculateQuadricError();
+                MeshSimplify();
 
-        if (ImGui::Button("erase face"))
+                //进度条
+                if ((float)i / t > (schedule + 1) * 0.1f)
+                {
+                    std::cout << "\033[F";//删除上一行控制台输出
+                    printf("[");
+                    for (int j = 0;j < schedule + 1;j++)
+                    {
+                        printf("=");
+                    }
+                    printf(">");
+                    for (int j = 0;j < 8 - schedule;j++)
+                    {
+                        printf(" ");
+                    }
+                    printf("]%d0%%\n", schedule + 1);
+                    schedule++;
+                }
+            }
+            std::cout << "\033[F";//删除上一行控制台输出
+            printf("[==========]100%%\n");//100%
+            std::cout << "\033[0m"; // 重置颜色属性
+            printf("finish:%dtimes\n", t);
+        }
+        ImGui::SameLine();
+        ImGui::InputText("simplify times", m_input2, IM_ARRAYSIZE(m_input2));
+
+        
+
+        /*if (ImGui::Button("erase face"))
         {
             int index = atoi(m_input);
             if (index < m_Mesh->m_Faces.size())
@@ -207,19 +258,22 @@ namespace module {
                 printf("erase edge:%d\n", index);
                 m_Mesh->EraseEdge(index);
             }
-        }
+        }*/
 
         if (ImGui::Button("load model 1"))
         {
             m_Mesh->Reload("res/mesh/Nefertiti_face.obj");
+            InitQEM();
         }
         if (ImGui::Button("load model 2"))
         {
-            m_Mesh->Reload("res/mesh/yuegui.obj");
+            m_Mesh->Reload("res/mesh/Bunny_head.obj");
+            InitQEM();
         }
         if (ImGui::Button("load model 3"))
         {
-            m_Mesh->Reload("res/mesh/simpleCube.obj");
+            m_Mesh->Reload("res/mesh/Balls.obj");
+            InitQEM();
         }
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / m_IO.Framerate, m_IO.Framerate);
@@ -244,5 +298,141 @@ namespace module {
     void Homework9::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     {
         Camera::ScrollCallback(window, xoffset, yoffset);
+    }
+
+    void Homework9::InitQEM()
+    {
+        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
+        {
+            int start = m_Mesh->m_Vertices[i].edgeIndex;
+            int t = m_Mesh->m_Edges[m_Mesh->m_Edges[start].oppositeEdgeIndex].nextEdgeIndex;
+            glm::vec3 a_b_c = m_Mesh->NormalOfFace(m_Mesh->m_Edges[start].faceIndex);
+            float a = a_b_c.x;
+            float b = a_b_c.y;
+            float c = a_b_c.z;
+            float d = -(m_Mesh->m_Vertices[i].position.x * a + m_Mesh->m_Vertices[i].position.y * b + m_Mesh->m_Vertices[i].position.z * c);
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.setZero();
+
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 0) += a * a;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 1) += a * b;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 2) += a * c;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 3) += a * d;
+
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 0) += a * b;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 1) += b * b;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 2) += b * c;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 3) += b * d;
+
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 0) += a * c;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 1) += b * c;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 2) += c * c;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 3) += c * d;
+
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 0) += a * d;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 1) += b * d;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 2) += c * d;
+            m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 3) += d * d;
+            while (t != start)
+            {
+                glm::vec3 a_b_c = m_Mesh->NormalOfFace(m_Mesh->m_Edges[t].faceIndex);
+                float a = a_b_c.x;
+                float b = a_b_c.y;
+                float c = a_b_c.z;
+                float d = -(m_Mesh->m_Vertices[i].position.x * a + m_Mesh->m_Vertices[i].position.y * b + m_Mesh->m_Vertices[i].position.z * c);
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 0) += a * a;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 1) += a * b;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 2) += a * c;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(0, 3) += a * d;
+
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 0) += a * b;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 1) += b * b;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 2) += b * c;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(1, 3) += b * d;
+
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 0) += a * c;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 1) += b * c;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 2) += c * c;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(2, 3) += c * d;
+
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 0) += a * d;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 1) += b * d;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 2) += c * d;
+                m_Mesh->m_Vertices[i].QuadricErrorMetrix.coeffRef(3, 3) += d * d;
+
+                t = m_Mesh->m_Edges[m_Mesh->m_Edges[t].oppositeEdgeIndex].nextEdgeIndex;
+            }
+        }
+    }
+
+    void Homework9::CalculateQuadricError()
+    {
+        for (int i = 0;i < m_Mesh->m_Edges.size();i++)
+        {
+            //v1->v2
+            int v1 = m_Mesh->m_Edges[m_Mesh->m_Edges[i].oppositeEdgeIndex].vertexIndex;
+            int v2 = m_Mesh->m_Edges[i].vertexIndex;
+            Eigen::Matrix4f& Q1 = m_Mesh->m_Vertices[v1].QuadricErrorMetrix;
+            Eigen::Matrix4f& Q2 = m_Mesh->m_Vertices[v2].QuadricErrorMetrix;
+            Eigen::Matrix4f Q = Q1 + Q2;
+            Eigen::Matrix4f Q_ = Q;
+            Q_.coeffRef(3, 0) = 0.0f;
+            Q_.coeffRef(3, 1) = 0.0f;
+            Q_.coeffRef(3, 2) = 0.0f;
+            Q_.coeffRef(3, 3) = 1.0f;
+            if (Q_.determinant() != 0.0f)
+            {
+                //可逆
+                Eigen::Vector4f v = Q_.inverse() * Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
+                m_Mesh->m_Edges[i].QuadricError = v.transpose() * Q * v;
+                m_Mesh->m_Edges[i].bestPosition = glm::vec3(v.x(), v.y(), v.z());
+                //std::cout << Q << std::endl;
+                //printf("e:%d:  yes   error:%f\n", i, m_Mesh->m_Edges[i].QuadricError);
+            }
+            else
+            {
+                glm::vec3 v_pos = 0.5f * m_Mesh->m_Vertices[v1].position + 0.5f * m_Mesh->m_Vertices[v2].position;
+                Eigen::Vector4f v = Eigen::Vector4f(v_pos.x, v_pos.y, v_pos.z, 1.0f);
+                m_Mesh->m_Edges[i].QuadricError = v.transpose() * Q * v;
+                m_Mesh->m_Edges[i].bestPosition = v_pos;
+                //printf("e:%d:  no    error:%f\n", i, m_Mesh->m_Edges[i].QuadricError);
+            }
+        }
+    }
+
+    void Homework9::MeshSimplify()
+    {
+        int minIndex = -1;
+        float minValue = 10000;
+        for (int i = 0;i < m_Mesh->m_Edges.size();i++)
+        {
+            if (m_Mesh->m_Edges[i].QuadricError < minValue && m_Mesh->EdgeContractable(i))
+            {
+                minIndex = i;
+                minValue = m_Mesh->m_Edges[i].QuadricError;
+            }
+        }
+        //minIndex为error最小的可塌缩边
+        if (minIndex == -1)
+        {
+            printf("unable to simplify\n");
+            return;
+        }
+        int v1 = m_Mesh->m_Edges[m_Mesh->m_Edges[minIndex].oppositeEdgeIndex].vertexIndex;
+        int v2 = m_Mesh->m_Edges[minIndex].vertexIndex;
+
+        //printf("v%d: %f,%f,%f\n",v1, m_Mesh->m_Vertices[v1].position.x, m_Mesh->m_Vertices[v1].position.y, m_Mesh->m_Vertices[v1].position.z);
+        //printf("v%d: %f,%f,%f\n",v2, m_Mesh->m_Vertices[v2].position.x, m_Mesh->m_Vertices[v2].position.y, m_Mesh->m_Vertices[v2].position.z);
+
+        m_Mesh->m_Vertices[v1].position = m_Mesh->m_Edges[minIndex].bestPosition;
+        m_Mesh->m_Vertices[v2].position = m_Mesh->m_Edges[minIndex].bestPosition;
+
+        //printf("best: %f,%f,%f\n\n", m_Mesh->m_Vertices[v1].position.x, m_Mesh->m_Vertices[v1].position.y, m_Mesh->m_Vertices[v1].position.z);
+
+        Eigen::Matrix4f& Q1 = m_Mesh->m_Vertices[v1].QuadricErrorMetrix;
+        Eigen::Matrix4f& Q2 = m_Mesh->m_Vertices[v2].QuadricErrorMetrix;
+        Eigen::Matrix4f Q = Q1 + Q2;
+        m_Mesh->m_Vertices[v1].QuadricErrorMetrix = Q;
+        m_Mesh->m_Vertices[v2].QuadricErrorMetrix = Q;
+        m_Mesh->EdgeContract(minIndex);
     }
 }

@@ -6,7 +6,7 @@
 #include "VertexBufferLayout.h"
 #include "Texture.h"
 #include "Camera.h"
-#include "HalfEdge.h"
+#include "HalfEdge2.h"
 
 #include "GLFW/glfw3.h"
 
@@ -33,6 +33,9 @@ namespace module {
 		void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) override;
 		void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) override;
 
+		void InitQEM();
+		void CalculateQuadricError();
+		void MeshSimplify();
 	private:
 
 		glm::mat4 m_Proj;
@@ -46,12 +49,13 @@ namespace module {
 		std::unique_ptr<IndexBuffer> m_IBO;
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<Camera> m_Camera;
-		std::unique_ptr<HE::Mesh> m_Mesh;
+		std::unique_ptr<HE2::Mesh> m_Mesh;
 
 		bool m_WireframeMode;
 
 		float m_scale;
-		char m_input[10] = "";
+		char m_input1[10] = "";
+		char m_input2[10] = "";
 
 		ImGuiIO& m_IO;
 	};
