@@ -96,6 +96,9 @@
     <ClCompile Include="src\HalfEdge2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\MeshSubdiv.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -547,6 +550,7 @@
     <None Include="src\vendor\Eigen\UmfPackSupport" />
     <None Include="res\shaders\Homework6.shader" />
     <None Include="res\shaders\Homework9.shader" />
+    <None Include="res\shaders\MeshSubdiv.shader" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Renderer.h">
@@ -2416,6 +2420,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HalfEdge2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\MeshSubdiv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

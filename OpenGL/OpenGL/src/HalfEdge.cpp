@@ -5,10 +5,7 @@
 #include <tuple>
 #include <cmath>
 #include <algorithm>
-
-#include "assimp/Importer.hpp"
-#include "assimp/scene.h"
-#include "assimp/postprocess.h"
+#include <queue>
 
 #include "HashForTuple.h"
 
@@ -58,186 +55,192 @@ namespace HE {
             aiMesh* mesh = scene->mMeshes[0];
             std::cout << "load mesh successful,num of vertices:" << mesh->mNumVertices << std::endl;
 
-            m_Vertices.resize(mesh->mNumVertices);//一次性分配空间，增加效率
-            m_Edges.resize(3 * mesh->mNumFaces);
-            m_Faces.resize(mesh->mNumFaces);
-            m_Indices.resize(3 * mesh->mNumFaces);
-
-            std::unordered_map<std::tuple<int, int>, int> cache1;//用于配对半边，注意vector中的数字从小到大
-            std::unordered_map<int, int> cache2;//键为边缘上的顶点，值为以这个顶点为起点的边缘半边，用于连接边缘的半边，即nextedge
-
-            //创建顶点列表
-            for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-            {
-                m_Vertices[i].position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-                m_Vertices[i].color = glm::vec3(1.0f, 1.0f, 1.0f);
-            }
-            //创建面列表
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                //if (face.mNumIndices != 3)//其实可以不判断，因为加载时用了aiProcess_Triangulate参数
-                //    continue;
-
-                m_Faces[i].edgeIndex = i * 3;
-            }
-
-            /*下面分五步创建半边列表*/
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                //e0 < e1 < e2, 三个半边的index
-                int e0 = i * 3 + 0;
-                int e1 = i * 3 + 1;
-                int e2 = i * 3 + 2;
-                //v0 < v1 < v2, 三个顶点的index
-                int v0 = face.mIndices[0];
-                int v1 = face.mIndices[1];
-                int v2 = face.mIndices[2];
-                Sort(v0, v1, v2);
-
-                //step1.先不管对偶边，直接创建所有半边
-                m_Edges[e0].vertexIndex = v0;
-                m_Edges[e1].vertexIndex = v1;
-                m_Edges[e2].vertexIndex = v2;
-
-                m_Edges[e0].faceIndex = i;
-                m_Edges[e1].faceIndex = i;
-                m_Edges[e2].faceIndex = i;
-
-                m_Edges[e0].oppositeEdgeIndex = -1;
-                m_Edges[e1].oppositeEdgeIndex = -1;
-                m_Edges[e2].oppositeEdgeIndex = -1;
-
-                m_Edges[e0].nextEdgeIndex = e1;
-                m_Edges[e1].nextEdgeIndex = e2;
-                m_Edges[e2].nextEdgeIndex = e0;
-            }
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                int e0 = i * 3 + 0;
-                int e1 = i * 3 + 1;
-                int e2 = i * 3 + 2;
-                int v0 = face.mIndices[0];
-                int v1 = face.mIndices[1];
-                int v2 = face.mIndices[2];
-                Sort(v0, v1, v2);
-
-                //step2.先不管对偶半边方向，强行配对同一边上的半边
-                if (cache1.find({ v0, v1 }) != cache1.end())
-                {
-                    m_Edges[e1].oppositeEdgeIndex = cache1[{ v0, v1 }];
-                    m_Edges[cache1[{ v0, v1 }]].oppositeEdgeIndex = e1;
-                    cache1.erase({ v0, v1 });
-                }
-                else
-                {
-                    cache1[{ v0, v1 }] = e1;
-                }
-                if (cache1.find({ v1, v2 }) != cache1.end())
-                {
-                    m_Edges[e2].oppositeEdgeIndex = cache1[{ v1, v2 }];
-                    m_Edges[cache1[{ v1, v2 }]].oppositeEdgeIndex = e2;
-                    cache1.erase({ v1, v2 });
-                }
-                else
-                {
-                    cache1[{ v1, v2 }] = e2;
-                }
-                if (cache1.find({ v0, v2 }) != cache1.end())
-                {
-                    m_Edges[e0].oppositeEdgeIndex = cache1[{ v0, v2 }];
-                    m_Edges[cache1[{ v0, v2 }]].oppositeEdgeIndex = e0;
-                    cache1.erase({ v0, v2 });
-                }
-                else
-                {
-                    cache1[{ v0, v2 }] = e0;
-                }
-            }
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                //e0 < e1 < e2, 三个半边的index
-                int e0 = i * 3 + 0;
-                int e1 = i * 3 + 1;
-                int e2 = i * 3 + 2;
-                //v0 < v1 < v2, 三个顶点的index
-                int v0 = face.mIndices[0];
-                int v1 = face.mIndices[1];
-                int v2 = face.mIndices[2];
-                Sort(v0, v1, v2);
-
-                //step3.调整对边使得方向相反
-                if (m_Edges[e0].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e0].oppositeEdgeIndex].vertexIndex == m_Edges[e0].vertexIndex)
-                    AdjustTriangleDiretion(m_Edges[m_Edges[e0].oppositeEdgeIndex].faceIndex);
-                if (m_Edges[e1].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e1].oppositeEdgeIndex].vertexIndex == m_Edges[e1].vertexIndex)
-                    AdjustTriangleDiretion(m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex);
-                if (m_Edges[e2].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e2].oppositeEdgeIndex].vertexIndex == m_Edges[e2].vertexIndex)
-                    AdjustTriangleDiretion(m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex);
-
-            }
-            //step4.补齐哈希表1中剩下半边的对边(网格边缘)
-            for (const auto& pair : cache1)
-            {
-                HE::HalfEdge newEdge;
-                int v0 = std::get<0>(pair.first);
-                int v1 = std::get<1>(pair.first);
-                int e = pair.second;
-                int v = m_Edges[e].vertexIndex;
-
-                if (v == v0)
-                {
-                    newEdge.vertexIndex = v1;
-                    newEdge.faceIndex = -1;
-                    newEdge.oppositeEdgeIndex = e;
-                    newEdge.nextEdgeIndex = -1;
-
-                    m_Edges.push_back(newEdge);
-                    cache2[v0] = m_Edges.size() - 1;
-
-                    m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
-                }
-                else//v == v1
-                {
-                    newEdge.vertexIndex = v0;
-                    newEdge.faceIndex = -1;
-                    newEdge.oppositeEdgeIndex = e;
-                    newEdge.nextEdgeIndex = -1;
-
-                    m_Edges.push_back(newEdge);
-                    cache2[v1] = m_Edges.size() - 1;
-
-                    m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
-                }
-
-            }
-
-            //step5.连接网格边缘的半边
-            for (int i = 3 * m_Faces.size(); i < m_Edges.size(); i++)
-            {
-                int v = m_Edges[i].vertexIndex;//该半边指向的顶点的index
-                m_Edges[i].nextEdgeIndex = cache2[v];
-            }
-
-            //给顶点添加半边信息,由于边缘的半边在半边列表的末尾，因此边缘点的edge一定是边缘半边，这方便了由一点查找所有半边的操作
-            for (int i = 0; i < m_Edges.size(); i++)
-            {
-                m_Vertices[m_Edges[m_Edges[i].oppositeEdgeIndex].vertexIndex].edgeIndex = i;
-            }
-
-            //创建初始的索引列表(不属于半边结构，只是用于opengl绘图，在半边结构中处理过的mesh需要调用函数以更新indices)
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                m_Indices[i * 3 + 0] = face.mIndices[0];
-                m_Indices[i * 3 + 1] = face.mIndices[1];
-                m_Indices[i * 3 + 2] = face.mIndices[2];
-            }
-
+            Reload(mesh);
         }
         importer.FreeScene();
+    }
+
+    void Mesh::Reload(aiMesh* mesh)
+    {
+        //如果是传入的参数mesh是手动构造的，至少需要填写以下变量:mesh->mNumVertices,mesh->mNumFaces,mesh->mVertices,mesh->mFaces
+
+        m_Vertices.resize(mesh->mNumVertices);//一次性分配空间，增加效率
+        m_Edges.resize(3 * mesh->mNumFaces);
+        m_Faces.resize(mesh->mNumFaces);
+        m_Indices.resize(3 * mesh->mNumFaces);
+
+        std::unordered_map<std::tuple<int, int>, int> cache1;//用于配对半边，注意vector中的数字从小到大
+        std::unordered_map<int, int> cache2;//键为边缘上的顶点，值为以这个顶点为起点的边缘半边，用于连接边缘的半边，即nextedge
+
+        //创建顶点列表
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+        {
+            m_Vertices[i].position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+            m_Vertices[i].color = glm::vec3(1.0f, 1.0f, 1.0f);
+        }
+        //创建面列表
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            //if (face.mNumIndices != 3)//其实可以不判断，因为加载时用了aiProcess_Triangulate参数
+            //    continue;
+
+            m_Faces[i].edgeIndex = i * 3;
+        }
+
+        /*下面分五步创建半边列表*/
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            //e0 < e1 < e2, 三个半边的index
+            int e0 = i * 3 + 0;
+            int e1 = i * 3 + 1;
+            int e2 = i * 3 + 2;
+            //v0 < v1 < v2, 三个顶点的index
+            int v0 = face.mIndices[0];
+            int v1 = face.mIndices[1];
+            int v2 = face.mIndices[2];
+            Sort(v0, v1, v2);
+
+            //step1.先不管对偶边，直接创建所有半边
+            m_Edges[e0].vertexIndex = v0;
+            m_Edges[e1].vertexIndex = v1;
+            m_Edges[e2].vertexIndex = v2;
+
+            m_Edges[e0].faceIndex = i;
+            m_Edges[e1].faceIndex = i;
+            m_Edges[e2].faceIndex = i;
+
+            m_Edges[e0].oppositeEdgeIndex = -1;
+            m_Edges[e1].oppositeEdgeIndex = -1;
+            m_Edges[e2].oppositeEdgeIndex = -1;
+
+            m_Edges[e0].nextEdgeIndex = e1;
+            m_Edges[e1].nextEdgeIndex = e2;
+            m_Edges[e2].nextEdgeIndex = e0;
+        }
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            int e0 = i * 3 + 0;
+            int e1 = i * 3 + 1;
+            int e2 = i * 3 + 2;
+            int v0 = face.mIndices[0];
+            int v1 = face.mIndices[1];
+            int v2 = face.mIndices[2];
+            Sort(v0, v1, v2);
+
+            //step2.先不管对偶半边方向，强行配对同一边上的半边
+            if (cache1.find({ v0, v1 }) != cache1.end())
+            {
+                m_Edges[e1].oppositeEdgeIndex = cache1[{ v0, v1 }];
+                m_Edges[cache1[{ v0, v1 }]].oppositeEdgeIndex = e1;
+                cache1.erase({ v0, v1 });
+            }
+            else
+            {
+                cache1[{ v0, v1 }] = e1;
+            }
+            if (cache1.find({ v1, v2 }) != cache1.end())
+            {
+                m_Edges[e2].oppositeEdgeIndex = cache1[{ v1, v2 }];
+                m_Edges[cache1[{ v1, v2 }]].oppositeEdgeIndex = e2;
+                cache1.erase({ v1, v2 });
+            }
+            else
+            {
+                cache1[{ v1, v2 }] = e2;
+            }
+            if (cache1.find({ v0, v2 }) != cache1.end())
+            {
+                m_Edges[e0].oppositeEdgeIndex = cache1[{ v0, v2 }];
+                m_Edges[cache1[{ v0, v2 }]].oppositeEdgeIndex = e0;
+                cache1.erase({ v0, v2 });
+            }
+            else
+            {
+                cache1[{ v0, v2 }] = e0;
+            }
+        }
+
+        //step3.调整对边使得方向相反
+        AdjustTriangleDiretionNoRecursion(0);
+
+        /*
+        //递归方法，容易栈溢出，不再采用
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            //e0 < e1 < e2, 三个半边的index
+            int e0 = i * 3 + 0;
+            int e1 = i * 3 + 1;
+            int e2 = i * 3 + 2;
+            
+            if (m_Edges[e0].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e0].oppositeEdgeIndex].vertexIndex == m_Edges[e0].vertexIndex)
+                AdjustTriangleDiretion(m_Edges[m_Edges[e0].oppositeEdgeIndex].faceIndex);
+            if (m_Edges[e1].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e1].oppositeEdgeIndex].vertexIndex == m_Edges[e1].vertexIndex)
+                AdjustTriangleDiretion(m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex);
+            if (m_Edges[e2].oppositeEdgeIndex != -1 && m_Edges[m_Edges[e2].oppositeEdgeIndex].vertexIndex == m_Edges[e2].vertexIndex)
+                AdjustTriangleDiretion(m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex);
+        }
+        */
+
+        //step4.补齐哈希表1中剩下半边的对边(网格边缘)
+        for (const auto& pair : cache1)
+        {
+            HE::HalfEdge newEdge;
+            int v0 = std::get<0>(pair.first);
+            int v1 = std::get<1>(pair.first);
+            int e = pair.second;
+            int v = m_Edges[e].vertexIndex;
+
+            if (v == v0)
+            {
+                newEdge.vertexIndex = v1;
+                newEdge.faceIndex = -1;
+                newEdge.oppositeEdgeIndex = e;
+                newEdge.nextEdgeIndex = -1;
+
+                m_Edges.push_back(newEdge);
+                cache2[v0] = m_Edges.size() - 1;
+
+                m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
+            }
+            else//v == v1
+            {
+                newEdge.vertexIndex = v0;
+                newEdge.faceIndex = -1;
+                newEdge.oppositeEdgeIndex = e;
+                newEdge.nextEdgeIndex = -1;
+
+                m_Edges.push_back(newEdge);
+                cache2[v1] = m_Edges.size() - 1;
+
+                m_Edges[e].oppositeEdgeIndex = m_Edges.size() - 1;
+            }
+        }
+
+        //step5.连接网格边缘的半边
+        for (int i = 3 * m_Faces.size(); i < m_Edges.size(); i++)
+        {
+            int v = m_Edges[i].vertexIndex;//该半边指向的顶点的index
+            m_Edges[i].nextEdgeIndex = cache2[v];
+        }
+
+        //给顶点添加半边信息,由于边缘的半边在半边列表的末尾，因此边缘点的edge一定是边缘半边，这方便了由一点查找所有半边的操作
+        for (int i = 0; i < m_Edges.size(); i++)
+        {
+            m_Vertices[m_Edges[m_Edges[i].oppositeEdgeIndex].vertexIndex].edgeIndex = i;
+        }
+
+        //创建初始的索引列表(不属于半边结构，只是用于opengl绘图，在半边结构中处理过的mesh需要调用函数以更新indices)
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            m_Indices[i * 3 + 0] = face.mIndices[0];
+            m_Indices[i * 3 + 1] = face.mIndices[1];
+            m_Indices[i * 3 + 2] = face.mIndices[2];
+        }
     }
 
     bool Mesh::IsBoundaryVertex(int vertexIndex)
@@ -357,6 +360,75 @@ namespace HE {
         return;
     }
 
+    void Mesh::AdjustTriangleDiretionNoRecursion(int faceIndex)
+    {
+        //非递归方法，指定一个三角形作为起点，广度优先遍历并调整整个网格
+        std::queue<int> fringe;//扩张区域的边缘
+        std::vector<bool> confirmList(m_Faces.size(), false);//已经确认方向正确、或者已经加入队列的面
+        fringe.push(faceIndex);
+        confirmList[faceIndex] = true;
+
+        //初始化完成，接下来循环直到所有面都调整到正确方向
+        while (!fringe.empty())
+        {
+            int faceIndex = fringe.front();
+            fringe.pop();
+
+            int e1 = m_Faces[faceIndex].edgeIndex;
+            int e2 = m_Edges[e1].nextEdgeIndex;
+            int e3 = m_Edges[e2].nextEdgeIndex;
+
+            if (m_Edges[e1].oppositeEdgeIndex != -1 && confirmList[m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex] == false)
+            {
+                fringe.push(m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex);
+                confirmList[m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex] = true;
+                if (m_Edges[m_Edges[e1].oppositeEdgeIndex].vertexIndex == m_Edges[e1].vertexIndex)
+                {
+                    overturnTriangle(m_Edges[m_Edges[e1].oppositeEdgeIndex].faceIndex);
+                }
+            }
+            if (m_Edges[e2].oppositeEdgeIndex != -1 && confirmList[m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex] == false)
+            {
+                fringe.push(m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex);
+                confirmList[m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex] = true;
+                if (m_Edges[m_Edges[e2].oppositeEdgeIndex].vertexIndex == m_Edges[e2].vertexIndex)
+                {
+                    overturnTriangle(m_Edges[m_Edges[e2].oppositeEdgeIndex].faceIndex);
+                }
+            }
+            if (m_Edges[e3].oppositeEdgeIndex != -1 && confirmList[m_Edges[m_Edges[e3].oppositeEdgeIndex].faceIndex] == false)
+            {
+                fringe.push(m_Edges[m_Edges[e3].oppositeEdgeIndex].faceIndex);
+                confirmList[m_Edges[m_Edges[e3].oppositeEdgeIndex].faceIndex] = true;
+                if (m_Edges[m_Edges[e3].oppositeEdgeIndex].vertexIndex == m_Edges[e3].vertexIndex)
+                {
+                    overturnTriangle(m_Edges[m_Edges[e3].oppositeEdgeIndex].faceIndex);
+                }
+            }
+        }
+        return;
+    }
+
+    void Mesh::overturnTriangle(int faceIndex)
+    {
+        //翻转一个面的边朝向，不考虑对边
+        int e1 = m_Faces[faceIndex].edgeIndex;
+        int e2 = m_Edges[e1].nextEdgeIndex;
+        int e3 = m_Edges[e2].nextEdgeIndex;
+
+        int v1 = m_Edges[e1].vertexIndex;
+        int v2 = m_Edges[e2].vertexIndex;
+        int v3 = m_Edges[e3].vertexIndex;
+
+        m_Edges[e1].vertexIndex = v3;
+        m_Edges[e2].vertexIndex = v1;
+        m_Edges[e3].vertexIndex = v2;
+
+        m_Edges[e1].nextEdgeIndex = e3;
+        m_Edges[e2].nextEdgeIndex = e1;
+        m_Edges[e3].nextEdgeIndex = e2;
+    }
+
     void Mesh::PrintVertices()
     {
         printf("Vertices' position:\n");
@@ -410,8 +482,7 @@ namespace HE {
         }
     }
     
-
-    glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C)
+    static glm::vec3 Excenter(glm::vec3 A, glm::vec3 B, glm::vec3 C)
     {
         glm::vec3 MAB = 0.5f * A + 0.5f * B;
         glm::vec3 MBC = 0.5f * B + 0.5f * C;
@@ -429,7 +500,7 @@ namespace HE {
         return excenter;
     }
 
-    float AreaOfTriangle(glm::vec3 A, glm::vec3 B, glm::vec3 C)
+    static float AreaOfTriangle(glm::vec3 A, glm::vec3 B, glm::vec3 C)
     {
         float a = sqrtf(pow(B.x - C.x, 2) + pow(B.y - C.y, 2) + pow(B.z - C.z, 2));
         float b = sqrtf(pow(C.x - A.x, 2) + pow(C.y - A.y, 2) + pow(C.z - A.z, 2));

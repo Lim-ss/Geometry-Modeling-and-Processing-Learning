@@ -6,6 +6,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
+
 namespace HE {
     struct Vertex;
     struct HalfEdge;
@@ -17,7 +21,10 @@ namespace HE {
         Mesh(const std::string& filepath);
         ~Mesh();
         void Reload(const std::string& filepath);
+        void Reload(aiMesh* mesh);
         void AdjustTriangleDiretion(int faceIndex);
+        void AdjustTriangleDiretionNoRecursion(int faceIndex);
+        void overturnTriangle(int faceIndex);
         void PrintVertices();
         void PrintIndices();
         void PrintHalfEdges();

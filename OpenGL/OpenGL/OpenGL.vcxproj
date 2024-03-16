@@ -146,6 +146,7 @@
     <ClCompile Include="src\homeworks\Homework6.cpp" />
     <ClCompile Include="src\homeworks\Homework7.cpp" />
     <ClCompile Include="src\homeworks\Homework9.cpp" />
+    <ClCompile Include="src\homeworks\MeshSubdiv.cpp" />
     <ClCompile Include="src\homeworks\Module.cpp" />
     <ClCompile Include="src\IndexBuffer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
@@ -167,6 +168,7 @@
     <None Include="res\shaders\Homework1.shader" />
     <None Include="res\shaders\Homework6.shader" />
     <None Include="res\shaders\Homework9.shader" />
+    <None Include="res\shaders\MeshSubdiv.shader" />
     <None Include="res\shaders\Test3D.shader" />
     <None Include="res\shaders\TestTexture2D.shader" />
     <None Include="src\vendor\Eigen\Cholesky" />
@@ -350,6 +352,7 @@
     <ClInclude Include="src\homeworks\Homework6.h" />
     <ClInclude Include="src\homeworks\Homework7.h" />
     <ClInclude Include="src\homeworks\Homework9.h" />
+    <ClInclude Include="src\homeworks\MeshSubdiv.h" />
     <ClInclude Include="src\homeworks\Module.h" />
     <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\Renderer.h" />
