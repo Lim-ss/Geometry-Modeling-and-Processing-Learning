@@ -139,6 +139,8 @@
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\HalfEdge.cpp" />
     <ClCompile Include="src\HalfEdge2.cpp" />
+    <ClCompile Include="src\HalfEdge3.cpp" />
+    <ClCompile Include="src\homeworks\CatmullClarkSubdivision.cpp" />
     <ClCompile Include="src\homeworks\Homework1.cpp" />
     <ClCompile Include="src\homeworks\Homework3.cpp" />
     <ClCompile Include="src\homeworks\Homework4.cpp" />
@@ -344,7 +346,9 @@
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\HalfEdge.h" />
     <ClInclude Include="src\HalfEdge2.h" />
+    <ClInclude Include="src\HalfEdge3.h" />
     <ClInclude Include="src\HashForTuple.h" />
+    <ClInclude Include="src\homeworks\CatmullClarkSubdivision.h" />
     <ClInclude Include="src\homeworks\Homework1.h" />
     <ClInclude Include="src\homeworks\Homework3.h" />
     <ClInclude Include="src\homeworks\Homework4.h" />

@@ -39,3 +39,12 @@ void Renderer::DrawPoint(const VertexArray& va, const IndexBuffer& ib, const Sha
     glDrawElements(GL_POINTS, count, GL_UNSIGNED_INT, nullptr);//draw with index(indices)
 
 }
+
+void Renderer::DrawLine(const VertexArray& va, const IndexBuffer& ib, const Shader& shader, int count) const
+{
+    shader.Bind();//step.1
+    va.Bind();//step.2
+    ib.Bind();//step.3
+    glDrawElements(GL_LINES, count, GL_UNSIGNED_INT, nullptr);//draw with index(indices)
+
+}

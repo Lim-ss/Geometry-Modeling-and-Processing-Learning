@@ -20,4 +20,5 @@ public:
     void Clear() const;
     void DrawTriangle(const VertexArray& va, const IndexBuffer& ib, const Shader& shader,int count) const;
     void DrawPoint(const VertexArray& va, const IndexBuffer& ib, const Shader& shader, int count) const;
+    void DrawLine(const VertexArray& va, const IndexBuffer& ib, const Shader& shader, int count) const;
 };
