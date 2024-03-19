@@ -96,7 +96,7 @@
     <ClCompile Include="src\HalfEdge2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\homeworks\MeshSubdiv.cpp">
+    <ClCompile Include="src\homeworks\LoopSubdivision.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\HalfEdge3.cpp">
@@ -2428,7 +2428,7 @@
     <ClInclude Include="src\HalfEdge2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\homeworks\MeshSubdiv.h">
+    <ClInclude Include="src\homeworks\LoopSubdivision.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HalfEdge3.h">

@@ -1,4 +1,4 @@
-#include "MeshSubdiv.h"
+#include "LoopSubdivision.h"
 
 #include "Renderer.h"
 #include "VertexBuffer.h"
@@ -41,7 +41,7 @@ static struct TupleHash {
 
 namespace module {
 
-    MeshSubdiv::MeshSubdiv()
+    LoopSubdivision::LoopSubdivision()
         :
         m_Proj(glm::mat4(1.0f)),
         m_View(glm::mat4(1.0f)),
@@ -76,19 +76,19 @@ namespace module {
         
     }
 
-    MeshSubdiv::~MeshSubdiv()
+    LoopSubdivision::~LoopSubdivision()
     {
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_POLYGON_OFFSET_FILL);
     }
 
-    void MeshSubdiv::OnUpdate(double deltaTime)
+    void LoopSubdivision::OnUpdate(double deltaTime)
     {
         m_Camera->CameraUpdate(deltaTime);
         m_Model = glm::scale(glm::mat4(1.0f), glm::vec3(pow(10.0f, m_scale)));//调整模型大小
     }
 
-    void MeshSubdiv::OnRender()
+    void LoopSubdivision::OnRender()
     {
         int width, height;
         GLFWwindow* window = glfwGetCurrentContext();
@@ -120,7 +120,7 @@ namespace module {
         renderer.DrawTriangle(*m_VAO, *m_IBO, *m_Shader, m_Mesh->m_Indices.size());
     }
 
-    void MeshSubdiv::OnImguiRender()
+    void LoopSubdivision::OnImguiRender()
     {
         if (ImGui::Button("Loop Subdiv"))
         {
@@ -148,27 +148,27 @@ namespace module {
 
     }
 
-    void MeshSubdiv::CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+    void LoopSubdivision::CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     {
         Camera::CursorPosCallback(window, xpos, ypos);
     }
 
-    void MeshSubdiv::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    void LoopSubdivision::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
         Camera::KeyCallback(window, key, scancode, action, mods);
     }
 
-    void MeshSubdiv::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+    void LoopSubdivision::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
     {
         Camera::MouseButtonCallback(window, button, action, mods);
     }
 
-    void MeshSubdiv::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+    void LoopSubdivision::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     {
         Camera::ScrollCallback(window, xoffset, yoffset);
     }
 
-    void MeshSubdiv::LoopSubdiv()
+    void LoopSubdivision::LoopSubdiv()
     {
         std::unordered_map<std::tuple<int, int>, int, TupleHash, TupleEqual> cache;//用于存储每条边对应的新点
         aiVector3D* Vertices = new aiVector3D[m_Mesh->m_Vertices.size() + m_Mesh->m_Edges.size() / 2];

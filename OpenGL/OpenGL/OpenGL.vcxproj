@@ -148,7 +148,7 @@
     <ClCompile Include="src\homeworks\Homework6.cpp" />
     <ClCompile Include="src\homeworks\Homework7.cpp" />
     <ClCompile Include="src\homeworks\Homework9.cpp" />
-    <ClCompile Include="src\homeworks\MeshSubdiv.cpp" />
+    <ClCompile Include="src\homeworks\LoopSubdivision.cpp" />
     <ClCompile Include="src\homeworks\Module.cpp" />
     <ClCompile Include="src\IndexBuffer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
@@ -356,7 +356,7 @@
     <ClInclude Include="src\homeworks\Homework6.h" />
     <ClInclude Include="src\homeworks\Homework7.h" />
     <ClInclude Include="src\homeworks\Homework9.h" />
-    <ClInclude Include="src\homeworks\MeshSubdiv.h" />
+    <ClInclude Include="src\homeworks\LoopSubdivision.h" />
     <ClInclude Include="src\homeworks\Module.h" />
     <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\Renderer.h" />

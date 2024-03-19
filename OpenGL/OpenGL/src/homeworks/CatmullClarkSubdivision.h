@@ -33,6 +33,7 @@ namespace module {
 		void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) override;
 		void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) override;
 
+		void ClarkSubdiv();
 	private:
 
 		glm::mat4 m_Proj;

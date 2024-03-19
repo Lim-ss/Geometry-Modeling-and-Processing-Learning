@@ -14,6 +14,29 @@
 
 #include "assimp/scene.h"
 
+static struct TupleEqual {
+    template <typename T, typename U>
+    bool operator()(const std::tuple<T, U>& tuple1, const std::tuple<T, U>& tuple2) const
+    {
+        bool equal = ((std::get<0>(tuple1) == std::get<0>(tuple2)) && (std::get<1>(tuple1) == std::get<1>(tuple2))
+            || (std::get<0>(tuple1) == std::get<1>(tuple2)) && (std::get<1>(tuple1) == std::get<0>(tuple2)));
+        return equal;
+    }
+};
+
+static struct TupleHash {
+    template <typename T, typename U>
+    std::size_t operator()(const std::tuple<T, U>& tuple) const {
+        std::size_t seed1 = 0;
+        std::size_t seed2 = 0;
+        seed1 ^= std::hash<T>{}(std::get<0>(tuple)) + 0x9e3779b9 + (seed1 << 6) + (seed1 >> 2);
+        seed1 ^= std::hash<U>{}(std::get<1>(tuple)) + 0x9e3779b9 + (seed1 << 6) + (seed1 >> 2);
+        seed2 ^= std::hash<T>{}(std::get<1>(tuple)) + 0x9e3779b9 + (seed2 << 6) + (seed2 >> 2);
+        seed2 ^= std::hash<U>{}(std::get<0>(tuple)) + 0x9e3779b9 + (seed2 << 6) + (seed2 >> 2);
+        return seed1 ^ seed2;
+    }
+};
+
 namespace module {
 
     CatmullClarkSubdivision::CatmullClarkSubdivision()
@@ -100,9 +123,9 @@ namespace module {
 
     void CatmullClarkSubdivision::OnImguiRender()
     {
-        if (ImGui::Button("Loop Subdiv"))
+        if (ImGui::Button("ClarkSubdiv"))
         {
-            ;
+            ClarkSubdiv();
         }
         ImGui::InputText("index", m_input1, IM_ARRAYSIZE(m_input1));
         if (ImGui::Button("highlight vertex"))
@@ -128,7 +151,7 @@ namespace module {
         }
         if (ImGui::Button("load model 2"))
         {
-            m_Mesh->Load("res/mesh/SimpleCube.obj");
+            m_Mesh->Load("res/mesh/Balls.obj");
         }
         if (ImGui::Button("load model 3"))
         {
@@ -180,4 +203,153 @@ namespace module {
         Camera::ScrollCallback(window, xoffset, yoffset);
     }
 
+    void CatmullClarkSubdivision::ClarkSubdiv()
+    {
+
+        std::unordered_map<std::tuple<int, int>, int, TupleHash, TupleEqual> cache;//新边点
+        aiVector3D* Vertices = new aiVector3D[m_Mesh->m_Vertices.size() + m_Mesh->m_Faces.size() + m_Mesh->m_Edges.size() / 2];
+        if (Vertices == nullptr)
+        {
+            printf("Vertices allocate failed\n");
+        }
+        int newfacesNum = 0;
+        for (int i = 0;i < m_Mesh->m_Faces.size();i++)
+        {
+            newfacesNum += m_Mesh->ShapeOfFace(i);
+        }
+        aiFace* Faces = new aiFace[newfacesNum];
+        if (Faces == nullptr)
+        {
+            printf("Faces allocate failed\n");
+        }
+        aiMesh mesh;
+        mesh.mNumVertices = m_Mesh->m_Vertices.size() + m_Mesh->m_Faces.size() + m_Mesh->m_Edges.size() / 2;
+        mesh.mNumFaces = newfacesNum;
+        mesh.mVertices = Vertices;
+        mesh.mFaces = Faces;
+
+        for (int i = 0;i < m_Mesh->m_Faces.size();i++)
+        {
+            //创建新面点，排在旧顶点之后
+            int e0 = m_Mesh->m_Faces[i].edgeIndex;
+            int e = e0;
+            int num = 1;
+            glm::vec3 sum = m_Mesh->m_Vertices[m_Mesh->m_Edges[e0].vertexIndex].position;
+            while (m_Mesh->m_Edges[e].nextEdgeIndex != e0)
+            {
+                e = m_Mesh->m_Edges[e].nextEdgeIndex;
+                num++;
+                sum += m_Mesh->m_Vertices[m_Mesh->m_Edges[e].vertexIndex].position;
+            }
+            glm::vec3 average = sum / (float)num;
+            Vertices[m_Mesh->m_Vertices.size() + i] = aiVector3D((ai_real)average.x, (ai_real)average.y, (ai_real)average.z);
+            //face[i]的新面点存在了Vertices[m_Mesh->m_Vertices.size() + i]里
+        }
+        int nextVertexIndex = m_Mesh->m_Vertices.size() + m_Mesh->m_Faces.size();//下一个新点要存入数组的位置
+        for (int i = 0;i < m_Mesh->m_Edges.size();i++)
+        {
+            //创建新边点，在新面点之后
+            //v1->v2
+            int v1 = m_Mesh->m_Edges[m_Mesh->m_Edges[i].oppositeEdgeIndex].vertexIndex;
+            int v2 = m_Mesh->m_Edges[i].vertexIndex;
+            if (cache.find({ v1, v2 }) != cache.end())
+            {
+                //已经创建过了
+                continue;
+            }
+            cache[{v1, v2}] = nextVertexIndex;
+            glm::vec3 position;
+            int f1 = m_Mesh->m_Edges[i].faceIndex;
+            int f2 = m_Mesh->m_Edges[m_Mesh->m_Edges[i].oppositeEdgeIndex].faceIndex;
+            if (f1 == -1 || f2 == -1)
+            {
+                //边界,取两点中点
+                position = 0.5f * m_Mesh->m_Vertices[v1].position + 0.5f * m_Mesh->m_Vertices[v2].position;
+            }
+            else
+            {
+                //非边界，取两端点和两面点平均
+                int v3 = m_Mesh->m_Vertices.size() + f1;
+                int v4 = m_Mesh->m_Vertices.size() + f2;
+                glm::vec3 v3pos = glm::vec3(Vertices[v3].x, Vertices[v3].y, Vertices[v3].z);
+                glm::vec3 v4pos = glm::vec3(Vertices[v4].x, Vertices[v4].y, Vertices[v4].z);
+                position = 0.25f * m_Mesh->m_Vertices[v1].position + 0.25f * m_Mesh->m_Vertices[v2].position + 0.25f * v3pos + 0.25f * v4pos;
+            }
+            Vertices[nextVertexIndex] = aiVector3D((ai_real)position.x, (ai_real)position.y, (ai_real)position.z);
+            nextVertexIndex++;
+        }
+        for (int i = 0;i < m_Mesh->m_Vertices.size();i++)
+        {
+            //更新旧顶点位置
+            if (m_Mesh->IsBoundaryVertex(i))
+            {
+                //边界点，不更新位置
+                Vertices[i] = aiVector3D((ai_real)m_Mesh->m_Vertices[i].position.x, (ai_real)m_Mesh->m_Vertices[i].position.y, (ai_real)m_Mesh->m_Vertices[i].position.z);
+                continue;
+            }
+            std::vector<int> outedges;
+            outedges.push_back(m_Mesh->m_Vertices[i].edgeIndex);
+            while (m_Mesh->m_Edges[m_Mesh->m_Edges[outedges.back()].oppositeEdgeIndex].nextEdgeIndex != outedges.front())
+            {
+                outedges.push_back(m_Mesh->m_Edges[m_Mesh->m_Edges[outedges.back()].oppositeEdgeIndex].nextEdgeIndex);
+            }
+            glm::vec3 Q = glm::vec3(0, 0, 0);//面点平均
+            glm::vec3 R = glm::vec3(0, 0, 0);//临边中点的平均
+            glm::vec3 S = m_Mesh->m_Vertices[i].position;//旧点坐标
+            for (int j = 0;j < outedges.size();j++)
+            {
+                int fv = m_Mesh->m_Vertices.size() + m_Mesh->m_Edges[outedges[j]].faceIndex;//面点在Vertices里的索引
+                Q += glm::vec3(Vertices[fv].x, Vertices[fv].y, Vertices[fv].z);
+                glm::vec3 v1pos = m_Mesh->m_Vertices[i].position;
+                glm::vec3 v2pos = m_Mesh->m_Vertices[m_Mesh->m_Edges[outedges[j]].vertexIndex].position;
+                R += 0.5f * (v1pos + v2pos);
+            }
+            int n = outedges.size();
+            Q /= n;
+            R /= n;
+            glm::vec3 newPos = (Q + 2.0f * R + S * (float)(n - 3)) / (float)n;
+            Vertices[i] = aiVector3D((ai_real)newPos.x, (ai_real)newPos.y, (ai_real)newPos.z);
+        }
+
+        int nextFaceIndex = 0;//下一个新面要存入数组的位置
+        for (int i = 0;i < m_Mesh->m_Faces.size();i++)
+        {
+            //将每个面分裂成边若干个四边形面
+            std::vector<int> edgesIndex;
+            std::vector<int> verticesIndex;
+            edgesIndex.push_back(m_Mesh->m_Faces[i].edgeIndex);
+            verticesIndex.push_back(m_Mesh->m_Edges[edgesIndex.back()].vertexIndex);
+            while (m_Mesh->m_Edges[edgesIndex.back()].nextEdgeIndex != edgesIndex.front())
+            {
+                edgesIndex.push_back(m_Mesh->m_Edges[edgesIndex.back()].nextEdgeIndex);
+                verticesIndex.push_back(m_Mesh->m_Edges[edgesIndex.back()].vertexIndex);
+            }
+            std::vector<int> edgeVertices;//新边点
+            int n = edgesIndex.size();
+            for (int j = 0;j < n;j++)
+            {
+                if (j != n - 1)
+                    edgeVertices.push_back(cache[{verticesIndex[j], verticesIndex[j + 1]}]);
+                else
+                    edgeVertices.push_back(cache[{verticesIndex[n - 1], verticesIndex[0]}]);
+            }
+            int fv = m_Mesh->m_Vertices.size() + i;
+            for (int j = 0;j < n;j++)
+            {
+                aiFace face;
+                face.mNumIndices = 4;
+                face.mIndices = new unsigned int[4];
+                face.mIndices[0] = fv;
+                face.mIndices[1] = edgeVertices[j];
+                face.mIndices[2] = j + 1 < n ? verticesIndex[j + 1] : verticesIndex[0];
+                face.mIndices[3] = j + 1 < n ? edgeVertices[j + 1] : edgeVertices[0];
+                Faces[nextFaceIndex] = face;
+                nextFaceIndex++;
+            }
+        }
+
+        m_Mesh->Load(&mesh);//重新由新拓扑关系建立新网格
+
+        return;
+    }
 }

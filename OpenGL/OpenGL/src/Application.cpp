@@ -19,7 +19,7 @@
 #include "Homework6.h"
 #include "Homework7.h"
 #include "Homework9.h"
-#include "MeshSubdiv.h"
+#include "LoopSubdivision.h"
 #include "CatmullClarkSubdivision.h"
 
 module::Module* currentModule = nullptr;
@@ -131,7 +131,7 @@ int main(void)
         moduleMenu->RegisterModule<module::Homework6>("Homework6");
         moduleMenu->RegisterModule<module::Homework7>("Homework7");
         moduleMenu->RegisterModule<module::Homework9>("Homework9");
-        moduleMenu->RegisterModule<module::MeshSubdiv>("MeshSubdiv");
+        moduleMenu->RegisterModule<module::LoopSubdivision>("LoopSubdivision");
         moduleMenu->RegisterModule<module::CatmullClarkSubdivision>("CatmullClarkSubdivision");
 
         /* Loop until the user closes the window */

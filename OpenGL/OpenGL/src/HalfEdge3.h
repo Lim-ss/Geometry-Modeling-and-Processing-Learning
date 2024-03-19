@@ -32,6 +32,7 @@ namespace HE3 {
         void UpdateIndices();
 
         bool IsBoundaryVertex(int vertexIndex);
+        int ShapeOfFace(int faceIndex);
 
     public:
         std::vector<Vertex> m_Vertices;

@@ -19,11 +19,11 @@
 
 namespace module {
 
-	class MeshSubdiv : public Module
+	class LoopSubdivision : public Module
 	{
 	public:
-		MeshSubdiv();
-		~MeshSubdiv();
+		LoopSubdivision();
+		~LoopSubdivision();
 
 		void OnUpdate(double deltaTime) override;
 		void OnRender() override;

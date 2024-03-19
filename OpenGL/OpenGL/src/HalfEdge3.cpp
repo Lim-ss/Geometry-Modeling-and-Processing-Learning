@@ -344,4 +344,17 @@ namespace HE3 {
         }
     }
 
+    int Mesh::ShapeOfFace(int faceIndex)
+    {
+        int e0 = m_Faces[faceIndex].edgeIndex;
+        int e = e0;
+        int num = 1;
+        while (m_Edges[e].nextEdgeIndex != e0)
+        {
+            e = m_Edges[e].nextEdgeIndex;
+            num++;
+        }
+        return num;
+    }
+
 }//namespace HE3
