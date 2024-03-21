@@ -21,6 +21,7 @@
 #include "Homework9.h"
 #include "LoopSubdivision.h"
 #include "CatmullClarkSubdivision.h"
+#include "OpenSubdivTest.h"
 
 module::Module* currentModule = nullptr;
 
@@ -133,6 +134,7 @@ int main(void)
         moduleMenu->RegisterModule<module::Homework9>("Homework9");
         moduleMenu->RegisterModule<module::LoopSubdivision>("LoopSubdivision");
         moduleMenu->RegisterModule<module::CatmullClarkSubdivision>("CatmullClarkSubdivision");
+        moduleMenu->RegisterModule<module::OpenSubdivTest>("OpenSubdivTest");
 
         /* Loop until the user closes the window */
         while (!glfwWindowShouldClose(window))

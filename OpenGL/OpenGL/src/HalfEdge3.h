@@ -40,6 +40,10 @@ namespace HE3 {
         std::vector<Face> m_Faces;
         std::vector<unsigned int> m_Indices1;//用于画三角面
         std::vector<unsigned int> m_Indices2;//用于画线框
+
+        //以多边形的形式存储index，用于opensubdiv接口
+        std::vector<int> m_Vertsperface;
+        std::vector<int> m_Indices3;
     };
 
     struct Vertex {

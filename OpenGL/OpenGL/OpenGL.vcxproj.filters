@@ -105,6 +105,9 @@
     <ClCompile Include="src\homeworks\CatmullClarkSubdivision.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\homeworks\OpenSubdivTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\TestTexture2D.shader" />
@@ -2435,6 +2438,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\homeworks\CatmullClarkSubdivision.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\homeworks\OpenSubdivTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

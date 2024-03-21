@@ -312,9 +312,14 @@ namespace HE3 {
     void Mesh::UpdateIndices()
     {
         m_Indices1.clear();
-        m_Indices1.reserve(m_Faces.size() * 4);
+        m_Indices1.reserve(m_Faces.size() * 6);//大约的
         m_Indices2.clear();
         m_Indices2.reserve(m_Edges.size() * 2);
+        m_Vertsperface.clear();
+        m_Vertsperface.reserve(m_Faces.size());
+        m_Indices3.clear();
+        m_Indices3.reserve(m_Faces.size() * 4);//大约的
+
         //更新indice1
         for (auto& face : m_Faces)
         {
@@ -333,6 +338,13 @@ namespace HE3 {
                 m_Indices1.push_back(verticesIndex[i+1]);
                 m_Indices1.push_back(verticesIndex[i+2]);
             }
+            for (int i = 0;i < edgesIndex.size();i++)
+            {
+                m_Indices3.push_back(verticesIndex[i]);
+            }
+            m_Vertsperface.push_back(edgesIndex.size());
+            
+
         }
         //更新indice2
         for (auto& edge : m_Edges)
