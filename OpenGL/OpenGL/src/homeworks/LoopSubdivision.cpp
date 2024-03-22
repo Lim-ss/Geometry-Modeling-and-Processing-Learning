@@ -107,10 +107,9 @@ namespace module {
         Renderer renderer;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_Mesh->UpdateIndices();
-        //m_Mesh->UpdateNormals();
+        /*m_Mesh->UpdateIndices();
         m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
-        m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
+        m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());*/
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         m_Shader->SetUniform1i("u_Mode", 3);
@@ -125,18 +124,30 @@ namespace module {
         if (ImGui::Button("Loop Subdiv"))
         {
             LoopSubdiv();
+            m_Mesh->UpdateIndices();
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         }
         if (ImGui::Button("load model 1"))
         {
             m_Mesh->Reload("res/mesh/Nefertiti_face.obj");
+            m_Mesh->UpdateIndices();
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         }
         if (ImGui::Button("load model 2"))
         {
             m_Mesh->Reload("res/mesh/SimpleCube.obj");
+            m_Mesh->UpdateIndices();
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         }
         if (ImGui::Button("load model 3"))
         {
             m_Mesh->Reload("res/mesh/Balls.obj");
+            m_Mesh->UpdateIndices();
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO->ReData(m_Mesh->m_Indices.data(), m_Mesh->m_Indices.size());
         }
         if (ImGui::Button("print"))
         {

@@ -108,10 +108,10 @@ namespace module {
         Renderer renderer;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_Mesh->UpdateIndices();
+        /*m_Mesh->UpdateIndices();
         m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE3::Vertex) * m_Mesh->m_Vertices.size());
         m_IBO1->ReData(m_Mesh->m_Indices1.data(), m_Mesh->m_Indices1.size());
-        m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());
+        m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());*/
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         m_Shader->SetUniform1i("u_Mode", 3);//´¿É«
@@ -126,6 +126,9 @@ namespace module {
         if (ImGui::Button("ClarkSubdiv"))
         {
             ClarkSubdiv();
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE3::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO1->ReData(m_Mesh->m_Indices1.data(), m_Mesh->m_Indices1.size());
+            m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());
         }
         ImGui::InputText("index", m_input1, IM_ARRAYSIZE(m_input1));
         if (ImGui::Button("highlight vertex"))
@@ -148,14 +151,23 @@ namespace module {
         if (ImGui::Button("load model 1"))
         {
             m_Mesh->Load("res/mesh/Nefertiti_face.obj");
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE3::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO1->ReData(m_Mesh->m_Indices1.data(), m_Mesh->m_Indices1.size());
+            m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());
         }
         if (ImGui::Button("load model 2"))
         {
             m_Mesh->Load("res/mesh/Balls.obj");
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE3::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO1->ReData(m_Mesh->m_Indices1.data(), m_Mesh->m_Indices1.size());
+            m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());
         }
         if (ImGui::Button("load model 3"))
         {
             m_Mesh->Load("res/mesh/polygonTest.obj");
+            m_VBO->ReData(m_Mesh->m_Vertices.data(), sizeof(HE3::Vertex) * m_Mesh->m_Vertices.size());
+            m_IBO1->ReData(m_Mesh->m_Indices1.data(), m_Mesh->m_Indices1.size());
+            m_IBO2->ReData(m_Mesh->m_Indices2.data(), m_Mesh->m_Indices2.size());
         }
         if (ImGui::Button("print"))
         {
